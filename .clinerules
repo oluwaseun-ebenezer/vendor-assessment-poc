@@ -1,0 +1,204 @@
+# Cline Rules — Automated Vendor Assessment Framework (PoC)
+
+## Project Overview
+
+This is a full-stack PoC for Carlsberg to automate AI startup vendor vetting and risk scoring across 8 compliance dimensions. It reduces time-to-onboard and produces structured, actionable reports.
+
+---
+
+## Tech Stack
+
+### Backend
+
+- **Language:** Python 3.11+
+- **Framework:** FastAPI (async-native, not Django)
+- **ORM:** SQLAlchemy (async) with Alembic for migrations
+- **Validation:** Pydantic v2 schemas
+- **PDF Generation:** WeasyPrint (pure Python, no Chromium/Puppeteer)
+- **LLM:** OpenRouter API (free-tier models: `meta-llama/llama-3-8b-instruct:free`, Mistral, Gemma) — NOT local Ollama
+- **Auth:** JWT (HS256), short-lived access token (15 min) + refresh token (7 days)
+- **Email:** Mailhog SMTP (PoC only, not production SMTP)
+
+### Frontend
+
+- **Framework:** React 18 + Vite + TypeScript
+- **State Management:** React Query (server state), no Redux
+- **Forms:** React Hook Form + Zod (validation)
+- **UI Components:** shadcn/ui (Tailwind-based)
+- **Charts:** Recharts
+
+### Infrastructure
+
+- **Database:** PostgreSQL 16 (Docker volume)
+- **Container Orchestration:** Docker Compose
+- **Reverse Proxy:** Nginx (port 80 → routes `/` to React port 3000, `/api/*` to FastAPI port 8000)
+- **Dev Email:** Mailhog (SMTP port 1025, UI port 8025)
+
+---
+
+## Project Structure Conventions
+
+```
+vendor-assessment-poc/
+├── backend/
+│   └── app/
+│       ├── api/           # Route handlers ONLY (thin controllers)
+│       ├── services/      # Business logic (vendor, scoring, report, task, notify)
+│       ├── scoring/       # One scorer per dimension + base class
+│       ├── models/        # SQLAlchemy ORM models
+│       ├── schemas/       # Pydantic request/response schemas
+│       └── core/          # Config, database engine, security helpers
+├── frontend/
+│   └── src/
+│       ├── pages/         # One file per page/route
+│       ├── components/    # Reusable UI components
+│       └── api/           # API client functions (React Query hooks)
+├── nginx/
+│   └── nginx.conf
+└── docs/                  # Architecture and phase documentation
+```
+
+### Backend Conventions
+
+- Route handlers in `api/` should be thin — delegate all logic to `services/`
+- Each SQLAlchemy model lives in `models/<entity>.py`
+- Each Pydantic schema lives in `schemas/<entity>.py`
+- Use async SQLAlchemy sessions throughout
+- All config from environment variables via `core/config.py` (Settings class with pydantic-settings)
+- **No secrets or hardcoded credentials in source code**
+
+### Frontend Conventions
+
+- Pages live in `src/pages/`, components in `src/components/`
+- API calls are wrapped in React Query hooks inside `src/api/`
+- Use shadcn/ui components first before writing custom ones
+- TypeScript strict mode — no `any` types
+
+---
+
+## The 8 Assessment Dimensions
+
+| #   | Dimension                      | Scorer File             | Owner            |
+| --- | ------------------------------ | ----------------------- | ---------------- |
+| 1   | Security, Privacy & Compliance | `security_scorer.py`    | IT Security      |
+| 2   | Vendor Viability & Continuity  | `viability_scorer.py`   | Procurement      |
+| 3   | Integration & Data Integrity   | `integration_scorer.py` | IT / Engineering |
+| 4   | Legal & IP                     | `legal_scorer.py`       | Legal            |
+| 5   | Cost & Commercials             | `commercial_scorer.py`  | Procurement      |
+| 6   | Operations & Change Management | `operations_scorer.py`  | Procurement / IT |
+| 7   | Global Scalability             | `scalability_scorer.py` | IT / Engineering |
+| 8   | Product Maturity & Delivery    | `maturity_scorer.py`    | AI Innovation    |
+
+Each dimension is scored **0–100** and flagged 🟢 Green (≥70) / 🟡 Amber (40–69) / 🔴 Red (<40).
+
+---
+
+## Scoring Engine Architecture
+
+### Scorer Pattern
+
+All scorers extend `base_scorer.py` (`BaseScorer` abstract class). Each scorer implements:
+
+1. **Rules-based scoring** — deterministic checks on structured intake form fields
+2. **LLM-assisted scoring** — uploaded documents sent to OpenRouter with dimension-specific prompts
+
+### Scoring Formula
+
+```
+Final Dimension Score = 0.6 × RulesScore + 0.4 × LLMScore
+```
+
+### LLM Integration
+
+- Use OpenRouter API at `https://openrouter.ai/api/v1`
+- Default model: `meta-llama/llama-3-8b-instruct:free`
+- Document text is extracted, chunked if needed, then prompted with structured criteria
+- Parse LLM response to extract numeric sub-score + reasoning text
+
+---
+
+## Database Schema (PostgreSQL)
+
+| Table              | Purpose                                                       |
+| ------------------ | ------------------------------------------------------------- |
+| `vendors`          | Company info, submitted docs, onboarding status               |
+| `assessments`      | One per vendor — tracks run state + timestamps                |
+| `dimension_scores` | One row per dimension per assessment (score, flags, evidence) |
+| `reports`          | Generated report metadata + PDF file path                     |
+| `tasks`            | Action items: title, description, dept, assignee, status      |
+| `users`            | Assessor accounts with roles                                  |
+| `enrichment_cache` | Cached external API results (TTL 7 days)                      |
+
+---
+
+## RBAC Roles
+
+| Role            | Access                                           |
+| --------------- | ------------------------------------------------ |
+| `admin`         | Full access                                      |
+| `procurement`   | Vendor intake, commercial dimension, tasks       |
+| `it_security`   | Security dimension, integration dimension, tasks |
+| `legal`         | Legal/IP dimension, tasks                        |
+| `ai_innovation` | Product maturity dimension, read-only            |
+
+---
+
+## External APIs (Free Tier)
+
+| API             | Purpose                        | Base URL                                           |
+| --------------- | ------------------------------ | -------------------------------------------------- |
+| NVD (NIST)      | CVE vulnerabilities            | `https://services.nvd.nist.gov/rest/json/cves/2.0` |
+| Companies House | UK company registration data   | `https://api.company-information.service.gov.uk`   |
+| OpenCorporates  | International company registry | `https://api.opencorporates.com`                   |
+| OpenRouter      | LLM inference                  | `https://openrouter.ai/api/v1`                     |
+
+- Cache all external API results in `enrichment_cache` table with 7-day TTL to avoid hammering free-tier limits.
+
+---
+
+## Delivery Phases
+
+| Phase | Name                        | Status     | Key Deliverable                                |
+| ----- | --------------------------- | ---------- | ---------------------------------------------- |
+| 1     | Foundation & Infrastructure | 🔲 Pending | Docker stack, DB schema, vendor intake form    |
+| 2     | Scoring Engine              | 🔲 Pending | Rules + LLM scoring across 8 dimensions        |
+| 3     | Reporting & Task Management | 🔲 Pending | PDF reports, auto-task creation, notifications |
+| 4     | Dashboard & Analytics       | 🔲 Pending | Full assessor UI, role views, metrics          |
+| 5     | PoC Validation              | 🔲 Pending | End-to-end test, metrics, stakeholder demo     |
+
+Refer to `docs/phase-N-*.md` for detailed tasks within each phase.
+
+---
+
+## Key Design Decisions (Do Not Change Without Discussion)
+
+| Decision                     | Rationale                                                    |
+| ---------------------------- | ------------------------------------------------------------ |
+| FastAPI over Django          | Async-native, faster to prototype, excellent OpenAPI docs    |
+| PostgreSQL over SQLite       | Concurrent writes, JSON column support, production-viable    |
+| OpenRouter over local Ollama | Reliable free-tier models without GPU requirements           |
+| Mailhog over real SMTP       | Zero config, zero cost, PoC-appropriate                      |
+| WeasyPrint over Puppeteer    | Pure Python, simpler Docker build, no Chromium dependency    |
+| React + shadcn/ui            | Fast enterprise-looking UI without a designer                |
+| React Query over Redux       | Server state management is sufficient; avoids Redux overhead |
+
+---
+
+## Environment Variables
+
+- All configuration via `.env` (copied from `.env.example`)
+- Key variables: `OPENROUTER_API_KEY`, `POSTGRES_PASSWORD`, `JWT_SECRET`
+- Never hardcode secrets or commit `.env` to version control
+- Use `core/config.py` (pydantic-settings `BaseSettings`) to load and validate env vars
+
+---
+
+## Docker Compose Services
+
+| Service    | Image                | Internal Port |
+| ---------- | -------------------- | ------------- |
+| `frontend` | `node:20-alpine`     | 3000          |
+| `backend`  | `python:3.11-slim`   | 8000          |
+| `db`       | `postgres:16-alpine` | 5432          |
+| `mailhog`  | `mailhog/mailhog`    | 1025 / 8025   |
+| `nginx`    | `nginx:alpine`       | 80            |

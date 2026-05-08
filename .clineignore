@@ -1,0 +1,49 @@
+# Cline Ignore — Vendor Assessment PoC
+# These paths are excluded from Cline's context window to reduce noise
+
+# Python dependencies and cache
+backend/.venv/
+backend/venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/*.egg-info/
+backend/.mypy_cache/
+backend/.ruff_cache/
+
+# Node / Frontend build artefacts
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# Build outputs
+**/dist/
+**/build/
+
+# Database migration auto-generated versions (keep structure, not every revision)
+backend/alembic/versions/
+
+# Generated PDF reports (runtime artefacts)
+backend/reports/
+**/generated_reports/
+
+# Docker volumes / local data
+postgres_data/
+mailhog_data/
+
+# Environment secrets
+.env
+*.env.local
+
+# IDE / OS noise
+.DS_Store
+Thumbs.db
+**/.idea/
+**/.vscode/settings.json
+
+# Logs
+**/*.log
+**/logs/

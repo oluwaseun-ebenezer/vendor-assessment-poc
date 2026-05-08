@@ -1,0 +1,121 @@
+# =============================================================================
+# Vendor Assessment PoC — .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Environment & Secrets — NEVER commit these
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.env
+
+# -----------------------------------------------------------------------------
+# Python / Backend
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Virtual environments
+backend/.venv/
+backend/venv/
+.venv/
+venv/
+
+# Distribution / packaging
+backend/dist/
+backend/build/
+backend/*.egg-info/
+backend/.eggs/
+
+# Test & coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+
+# Alembic auto-generated migration files (optional: remove if you want to track migrations)
+# backend/alembic/versions/
+
+# WeasyPrint generated PDFs
+backend/generated_reports/
+backend/reports/
+
+# Uploaded vendor documents (runtime data)
+backend/uploads/
+
+# -----------------------------------------------------------------------------
+# Node / Frontend
+# -----------------------------------------------------------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.eslintcache
+
+# Yarn / npm
+frontend/yarn-error.log
+frontend/npm-debug.log*
+frontend/.yarn/cache
+frontend/.yarn/unplugged
+frontend/.yarn/install-state.gz
+frontend/.pnp.*
+
+# -----------------------------------------------------------------------------
+# Docker & Infrastructure
+# -----------------------------------------------------------------------------
+# Named volumes (Postgres data) — never commit runtime data
+postgres_data/
+mailhog_data/
+
+# Local override compose file
+docker-compose.override.yml
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+*.log
+logs/
+*.log.*
+
+# -----------------------------------------------------------------------------
+# OS & Editor
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# JetBrains / PyCharm
+.idea/
+*.iml
+*.iws
+
+# VSCode (keep .vscode/extensions.json and .vscode/launch.json if useful,
+# but ignore personal/local settings)
+.vscode/settings.json
+.vscode/*.code-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.bak
+*.tmp
+*.orig
