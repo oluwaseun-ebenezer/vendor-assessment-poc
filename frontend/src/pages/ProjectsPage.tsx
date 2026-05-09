@@ -22,7 +22,9 @@ const AVAILABLE_MODELS = [
   { id: "minimax/minimax-m2.5:free", label: "MiniMax M2.5 · Free" },
   { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B · Free (may rate-limit)" },
   { id: "openai/gpt-4o", label: "GPT-4o · Paid" },
-  { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet · Paid" },
+  { id: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5 · Paid" },
+  { id: "anthropic/claude-3.7-sonnet", label: "Claude 3.7 Sonnet · Paid" },
+  { id: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku · Paid" },
   { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash · Paid" },
 ];
 
