@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useVendor } from "@/api/vendors";
+import { useVendor, useUpdateVendor } from "@/api/vendors";
 import { useAssessmentResults, useRunAssessment, useAssessmentStatus } from "@/api/assessments";
 import { useTasks, useUpdateTask } from "@/api/tasks";
 import { apiClient } from "@/api/client";
@@ -13,7 +13,7 @@ import {
   Play, FileText, Loader2, ChevronDown, ChevronUp,
   CheckCircle2, Circle, ArrowLeft, Building2,
   ShieldCheck, TrendingUp, Globe, Scale, DollarSign,
-  Settings, Layers, Star,
+  Settings, Layers, Star, Pencil, X,
 } from "lucide-react";
 
 const DIMENSION_ICONS: Record<string, React.ElementType> = {
@@ -169,11 +169,233 @@ function ApproveModal({ vendorId, onClose }: { vendorId: string; onClose: () => 
   );
 }
 
+function EditVendorModal({ vendor, onClose, onSaved }: {
+  vendor: any;
+  onClose: () => void;
+  onSaved: (rerun: boolean) => void;
+}) {
+  const updateVendor = useUpdateVendor();
+  const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"company" | "security">("company");
+
+  const [form, setForm] = useState({
+    company_name: vendor.company_name || "",
+    website: vendor.website || "",
+    country: vendor.country || "",
+    founded_year: vendor.founded_year ? String(vendor.founded_year) : "",
+    employee_count: vendor.employee_count ? String(vendor.employee_count) : "",
+    description: vendor.description || "",
+    funding_stage: vendor.funding_stage || "",
+    deployment_method: vendor.deployment_method || "SaaS",
+    cloud_provider: vendor.cloud_provider || "",
+    sla_uptime: vendor.sla_uptime || "",
+    data_residency: vendor.data_residency || "",
+    pricing_model: vendor.pricing_model || "",
+    iso27001: !!vendor.iso27001,
+    soc2: !!vendor.soc2,
+    gdpr_dpa: !!vendor.gdpr_dpa,
+    pen_test: !!vendor.pen_test,
+    security_breach: !!vendor.security_breach,
+    eu_data_residency: !!vendor.eu_data_residency,
+    ip_ownership_documented: !!vendor.ip_ownership_documented,
+    pending_litigation: !!vendor.pending_litigation,
+    business_continuity_plan: !!vendor.business_continuity_plan,
+    in_production: !!vendor.in_production,
+    enterprise_customers: !!vendor.enterprise_customers,
+    enterprise_pricing: !!vendor.enterprise_pricing,
+    api_docs_available: !!vendor.api_docs_available,
+    multi_region: !!vendor.multi_region,
+  });
+
+  const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async (rerun: boolean) => {
+    setSaving(true);
+    try {
+      await updateVendor.mutateAsync({
+        vendorId: vendor.id,
+        data: {
+          ...form,
+          founded_year: form.founded_year ? parseInt(form.founded_year) : undefined,
+          employee_count: form.employee_count ? parseInt(form.employee_count) : undefined,
+        },
+      });
+      onSaved(rerun);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#D4002A]/20 focus:border-[#D4002A]";
+  const labelCls = "block text-xs font-medium text-gray-600 mb-1";
+  const checkCls = "flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none";
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Edit Vendor</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{vendor.company_name}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Section tabs */}
+        <div className="flex gap-1 px-6 pt-4">
+          {(["company", "security"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                tab === t ? "bg-[#D4002A] text-white" : "text-gray-500 hover:text-gray-700"
+              }`}>
+              {t === "company" ? "Company Info" : "Security & Legal"}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {tab === "company" && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className={labelCls}>Company Name *</label>
+                <input className={inputCls} value={form.company_name} onChange={e => set("company_name", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Website</label>
+                <input className={inputCls} value={form.website} onChange={e => set("website", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Country (ISO)</label>
+                <input className={inputCls} value={form.country} onChange={e => set("country", e.target.value)} placeholder="DK" />
+              </div>
+              <div>
+                <label className={labelCls}>Founded Year</label>
+                <input className={inputCls} type="number" value={form.founded_year} onChange={e => set("founded_year", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Employees</label>
+                <input className={inputCls} type="number" value={form.employee_count} onChange={e => set("employee_count", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Funding Stage</label>
+                <select className={inputCls} value={form.funding_stage} onChange={e => set("funding_stage", e.target.value)}>
+                  <option value="">Unknown</option>
+                  {["pre-seed","seed","Series A","Series B","Series C","growth","public","bootstrapped"].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Deployment</label>
+                <select className={inputCls} value={form.deployment_method} onChange={e => set("deployment_method", e.target.value)}>
+                  {["SaaS","On-premise","Hybrid"].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Cloud Provider</label>
+                <input className={inputCls} value={form.cloud_provider} onChange={e => set("cloud_provider", e.target.value)} placeholder="AWS / Azure / GCP" />
+              </div>
+              <div>
+                <label className={labelCls}>Uptime SLA</label>
+                <input className={inputCls} value={form.sla_uptime} onChange={e => set("sla_uptime", e.target.value)} placeholder="99.9%" />
+              </div>
+              <div>
+                <label className={labelCls}>Data Residency</label>
+                <input className={inputCls} value={form.data_residency} onChange={e => set("data_residency", e.target.value)} placeholder="EU / US / Global" />
+              </div>
+              <div>
+                <label className={labelCls}>Pricing Model</label>
+                <select className={inputCls} value={form.pricing_model} onChange={e => set("pricing_model", e.target.value)}>
+                  <option value="">Unknown</option>
+                  {["usage_based","subscription","per_seat","custom","free"].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className={labelCls}>Description</label>
+                <textarea className={inputCls} rows={3} value={form.description} onChange={e => set("description", e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {tab === "security" && (
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Security & Compliance</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { k: "iso27001", label: "ISO 27001 Certified" },
+                    { k: "soc2", label: "SOC 2 Type II" },
+                    { k: "gdpr_dpa", label: "GDPR DPA Signed" },
+                    { k: "pen_test", label: "Pen Test (12 months)" },
+                    { k: "security_breach", label: "Security Breach Disclosed" },
+                    { k: "eu_data_residency", label: "EU Data Residency" },
+                  ].map(({ k, label }) => (
+                    <label key={k} className={checkCls}>
+                      <input type="checkbox" checked={!!form[k as keyof typeof form]}
+                        onChange={e => set(k, e.target.checked)} className="w-4 h-4 accent-[#D4002A]" />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Legal & Commercial</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { k: "ip_ownership_documented", label: "IP Ownership Documented" },
+                    { k: "pending_litigation", label: "Pending Litigation" },
+                    { k: "business_continuity_plan", label: "BCP in Place" },
+                    { k: "in_production", label: "In Production" },
+                    { k: "enterprise_customers", label: "Enterprise Customers" },
+                    { k: "enterprise_pricing", label: "Enterprise Pricing" },
+                    { k: "api_docs_available", label: "API Docs Available" },
+                    { k: "multi_region", label: "Multi-Region" },
+                  ].map(({ k, label }) => (
+                    <label key={k} className={checkCls}>
+                      <input type="checkbox" checked={!!form[k as keyof typeof form]}
+                        onChange={e => set(k, e.target.checked)} className="w-4 h-4 accent-[#D4002A]" />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleSave(false)}
+              disabled={saving || !form.company_name}
+              className="border border-gray-200 hover:border-gray-300 text-gray-700 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </button>
+            <button
+              onClick={() => handleSave(true)}
+              disabled={saving || !form.company_name}
+              className="flex items-center gap-2 bg-[#D4002A] hover:bg-[#b0001f] disabled:opacity-40 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Play className="h-3.5 w-3.5" />Save & Re-run Assessment</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [showApprove, setShowApprove] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const { data: vendor, isLoading } = useVendor(id);
   const { data: assessmentResults } = useAssessmentResults(id);
@@ -229,6 +451,16 @@ export function VendorDetailPage() {
   return (
     <AppLayout>
       {showApprove && id && <ApproveModal vendorId={id} onClose={() => setShowApprove(false)} />}
+      {showEdit && vendor && (
+        <EditVendorModal
+          vendor={vendor}
+          onClose={() => setShowEdit(false)}
+          onSaved={(rerun) => {
+            setShowEdit(false);
+            if (rerun && id) runAssessment.mutate(id);
+          }}
+        />
+      )}
 
       <div className="space-y-6 max-w-6xl">
         {/* Back */}
@@ -303,6 +535,12 @@ export function VendorDetailPage() {
             >
               {isAssessing ? <><Loader2 className="h-4 w-4 animate-spin" /> Assessing...</>
                 : <><Play className="h-4 w-4" /> Run Assessment</>}
+            </button>
+            <button
+              onClick={() => setShowEdit(true)}
+              className="flex items-center gap-2 border border-gray-200 hover:border-gray-300 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <Pencil className="h-4 w-4" /> Edit
             </button>
             <button
               onClick={handleDownloadPDF}
