@@ -45,6 +45,8 @@ services:
     env_file: .env
     environment:
       - BACKEND_URL=http://backend:8000
+      - MCP_TRANSPORT=http
+      - MCP_PORT=3100
     depends_on:
       - backend
     volumes:

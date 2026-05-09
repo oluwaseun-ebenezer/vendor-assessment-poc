@@ -6,8 +6,10 @@
  * risk assessment without any human UI interaction.
  */
 import "dotenv/config";
+import http from "node:http";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -121,21 +123,24 @@ const GetAnalyticsSchema = z.object({
   to_date: z.string().optional().describe("ISO date filter end"),
 });
 
-// ─── Server setup ─────────────────────────────────────────────────────────────
+// ─── Server factory — registers all handlers on a fresh Server instance ───────
 
-const server = new Server(
-  { name: "vendor-assessment-mcp", version: "1.0.0" },
-  {
-    capabilities: {
-      tools: {},
-      resources: {},
-    },
-  },
-);
+function buildServer(): Server {
+  const srv = new Server(
+    { name: "vendor-assessment-mcp", version: "1.0.0" },
+    { capabilities: { tools: {}, resources: {} } },
+  );
+  registerHandlers(srv);
+  return srv;
+}
+
+const server = buildServer();
+
+function registerHandlers(srv: Server) {
 
 // ─── Tools list ───────────────────────────────────────────────────────────────
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+srv.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       name: "submit_vendor",
@@ -143,7 +148,38 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "Create a new vendor record with full intake form data. Returns the created vendor with its ID for subsequent operations.",
       inputSchema: {
         type: "object",
-        properties: SubmitVendorSchema.shape,
+        properties: {
+          company_name: { type: "string" },
+          website: { type: "string" },
+          country: { type: "string" },
+          founded_year: { type: "number" },
+          employee_count: { type: "number" },
+          description: { type: "string" },
+          tech_stack: { type: "array", items: { type: "string" } },
+          iso27001: { type: "boolean" },
+          soc2: { type: "boolean" },
+          gdpr_dpa: { type: "boolean" },
+          security_breach: { type: "boolean" },
+          pen_test: { type: "boolean" },
+          data_residency: { type: "string" },
+          cloud_provider: { type: "string" },
+          api_docs_available: { type: "boolean" },
+          sla_uptime: { type: "string" },
+          company_registration_number: { type: "string" },
+          ip_ownership_documented: { type: "boolean" },
+          pending_litigation: { type: "boolean" },
+          pricing_model: { type: "string" },
+          enterprise_pricing: { type: "boolean" },
+          deployment_method: { type: "string" },
+          dedicated_csm: { type: "boolean" },
+          funding_stage: { type: "string" },
+          business_continuity_plan: { type: "boolean" },
+          in_production: { type: "boolean" },
+          enterprise_customers: { type: "boolean" },
+          eu_data_residency: { type: "boolean" },
+          multi_region: { type: "boolean" },
+          operating_countries: { type: "number" },
+        },
         required: ["company_name"],
       },
     },
@@ -284,7 +320,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+srv.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
@@ -528,7 +564,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // ─── Resources ────────────────────────────────────────────────────────────────
 
-server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+srv.setRequestHandler(ListResourcesRequestSchema, async () => ({
   resources: [
     {
       uri: "vendor://list",
@@ -554,7 +590,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
   ],
 }));
 
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+srv.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
 
   // vendor://list
@@ -614,6 +650,8 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   throw new Error(`Unknown resource URI: ${uri}`);
 });
 
+} // end registerHandlers
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toolSuccess(text: string) {
@@ -629,10 +667,52 @@ function toolError(text: string) {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-async function main() {
+async function startStdio() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   process.stderr.write("Vendor Assessment MCP Server running on stdio\n");
+}
+
+async function startHttp(port: number) {
+  const httpServer = http.createServer(async (req, res) => {
+    if (req.method === "GET" && req.url === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok", service: "vendor-assessment-mcp" }));
+      return;
+    }
+
+    if (req.url !== "/mcp") {
+      res.writeHead(404);
+      res.end("Not found");
+      return;
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    const body = Buffer.concat(chunks).toString();
+    const parsedBody = body ? JSON.parse(body) : undefined;
+
+    const reqServer = buildServer();
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    await reqServer.connect(transport);
+    await transport.handleRequest(req, res, parsedBody);
+  });
+
+  httpServer.listen(port, () => {
+    process.stderr.write(`Vendor Assessment MCP Server running on HTTP port ${port}\n`);
+    process.stderr.write(`  POST /mcp  — MCP Streamable HTTP endpoint\n`);
+    process.stderr.write(`  GET  /health — health check\n`);
+  });
+}
+
+async function main() {
+  const mode = process.env.MCP_TRANSPORT ?? (process.stdin.isTTY ? "http" : "stdio");
+  if (mode === "http") {
+    const port = parseInt(process.env.MCP_PORT ?? "3100", 10);
+    await startHttp(port);
+  } else {
+    await startStdio();
+  }
 }
 
 main().catch((err) => {
