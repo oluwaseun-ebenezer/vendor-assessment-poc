@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
@@ -48,21 +49,21 @@ class BaseDimensionScorer(ABC):
     async def score(self, inp: ScorerInput, llm_analyser: Any) -> DimensionResult:
         rules_score, evidence = self.score_with_rules(inp)
 
-        llm_score = 0.0
+        llm_score = rules_score
         llm_reasoning = ""
 
-        if inp.documents and llm_analyser:
+        if llm_analyser:
             try:
                 prompt = self.get_llm_prompt(inp)
                 llm_score, llm_reasoning = await llm_analyser.analyse(prompt)
             except Exception as e:
                 llm_reasoning = f"LLM analysis unavailable: {str(e)}"
-                llm_score = rules_score  # Fall back to rules score
+                llm_score = rules_score
 
         if inp.documents:
             composite = self.WEIGHT_RULES * rules_score + self.WEIGHT_LLM * llm_score
         else:
-            composite = rules_score  # No documents → rules only
+            composite = 0.7 * rules_score + 0.3 * llm_score
 
         composite = max(0.0, min(100.0, composite))
 

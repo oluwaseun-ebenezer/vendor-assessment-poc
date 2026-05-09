@@ -96,9 +96,16 @@ async def run_assessment_task(assessment_id: str, vendor_id: str):
             # Use per-project dimension weights if set
             dimension_weights = ai_config.get("dimension_weights", {})
 
-            # Run all 8 scorers concurrently
-            tasks = [scorer.score(scorer_input, llm) for scorer in ALL_SCORERS]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            # Run scorers sequentially with small delay to avoid LLM rate limits
+            results = []
+            for i, scorer in enumerate(ALL_SCORERS):
+                try:
+                    result = await scorer.score(scorer_input, llm)
+                    results.append(result)
+                except Exception as e:
+                    results.append(e)
+                if i < len(ALL_SCORERS) - 1:
+                    await asyncio.sleep(3)
 
             await llm.close()
 

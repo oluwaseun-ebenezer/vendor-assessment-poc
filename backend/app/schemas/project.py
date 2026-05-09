@@ -3,7 +3,7 @@ from typing import Optional, Any
 from datetime import datetime
 
 DEFAULT_AI_CONFIG = {
-    "model": "google/gemma-4-31b-it:free",
+    "model": "openai/gpt-oss-20b:free",
     "temperature": 0.2,
     "max_tokens": 800,
     "system_prompt": "",
@@ -21,7 +21,7 @@ DEFAULT_AI_CONFIG = {
 
 
 class AIConfig(BaseModel):
-    model: str = "google/gemma-4-31b-it:free"
+    model: str = "openai/gpt-oss-20b:free"
     temperature: float = 0.2
     max_tokens: int = 800
     system_prompt: str = ""

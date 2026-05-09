@@ -1,7 +1,22 @@
+import asyncio
 import json
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 from app.core.config import settings
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in (429, 500, 502, 503, 504)
+    return isinstance(exc, (httpx.TimeoutException, httpx.ConnectError))
+
+
+FALLBACK_MODELS = [
+    "openai/gpt-oss-20b:free",
+    "openai/gpt-oss-120b:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "minimax/minimax-m2.5:free",
+]
 
 
 class LLMAnalyser:
@@ -18,20 +33,9 @@ class LLMAnalyser:
         self.max_tokens = max_tokens or 800
         self.system_prompt = system_prompt
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    async def analyse(self, prompt: str) -> tuple[float, str]:
-        if not settings.openrouter_api_key:
-            return 50.0, "LLM analysis skipped: no API key configured"
-
-        base_system = (
-            "You are an enterprise vendor risk analyst. "
-            "Always respond with valid JSON only: "
-            '{"score": <integer 0-100>, "reasoning": "<explanation>"}'
-        )
-        system_content = f"{self.system_prompt}\n\n{base_system}".strip() if self.system_prompt else base_system
-
+    async def _call_model(self, model: str, system_content: str, prompt: str) -> tuple[float, str]:
         payload = {
-            "model": self.model,
+            "model": model,
             "messages": [
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt},
@@ -39,7 +43,6 @@ class LLMAnalyser:
             "response_format": {"type": "json_object"},
             "temperature": self.temperature,
         }
-
         response = await self.client.post(
             f"{settings.openrouter_base_url}/chat/completions",
             headers={
@@ -55,6 +58,39 @@ class LLMAnalyser:
         score = float(max(0, min(100, content.get("score", 50))))
         reasoning = content.get("reasoning", "")
         return score, reasoning
+
+    async def analyse(self, prompt: str) -> tuple[float, str]:
+        if not settings.openrouter_api_key:
+            return 50.0, "LLM analysis skipped: no API key configured"
+
+        base_system = (
+            "You are an enterprise vendor risk analyst. "
+            "Always respond with valid JSON only: "
+            '{"score": <integer 0-100>, "reasoning": "<explanation>"}'
+        )
+        system_content = f"{self.system_prompt}\n\n{base_system}".strip() if self.system_prompt else base_system
+
+        # Build fallback chain — primary model first, then fallbacks
+        models_to_try = [self.model]
+        for m in FALLBACK_MODELS:
+            if m != self.model:
+                models_to_try.append(m)
+
+        last_error = None
+        for model in models_to_try:
+            try:
+                return await self._call_model(model, system_content, prompt)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    last_error = e
+                    await asyncio.sleep(3)
+                    continue
+                raise
+            except Exception as e:
+                last_error = e
+                continue
+
+        raise last_error or RuntimeError("All LLM models failed")
 
     async def close(self):
         await self.client.aclose()
