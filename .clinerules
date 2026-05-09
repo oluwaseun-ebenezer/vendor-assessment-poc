@@ -4,9 +4,19 @@
 
 This is a full-stack PoC for Carlsberg to automate AI startup vendor vetting and risk scoring across 8 compliance dimensions. It reduces time-to-onboard and produces structured, actionable reports.
 
+**Hackathon challenge:** Build an MCP server that empowers AI agents to deliver reliable production-ready enterprise software faster. This project achieves this by exposing the entire vendor assessment workflow as MCP tools — enabling an AI agent to orchestrate vendor vetting end-to-end without human UI interaction.
+
 ---
 
 ## Tech Stack
+
+### MCP Server (Primary Innovation Layer)
+
+- **Language:** TypeScript (Node.js 20+)
+- **SDK:** `@modelcontextprotocol/sdk` (official MCP SDK)
+- **Transport:** stdio (for Cline/Claude Desktop) + HTTP (for programmatic use)
+- **Purpose:** Exposes all vendor assessment capabilities as MCP tools and resources
+- **Communicates with:** FastAPI backend via HTTP REST calls
 
 ### Backend
 
@@ -40,23 +50,38 @@ This is a full-stack PoC for Carlsberg to automate AI startup vendor vetting and
 
 ```
 vendor-assessment-poc/
+├── mcp-server/             # MCP server — AI agent interface (PRIMARY INNOVATION)
+│   └── src/
+│       ├── index.ts        # MCP server entry point (stdio transport)
+│       ├── client.ts       # HTTP client to FastAPI backend
+│       ├── tools/          # One file per MCP tool
+│       └── resources/      # MCP resource definitions
 ├── backend/
 │   └── app/
-│       ├── api/           # Route handlers ONLY (thin controllers)
-│       ├── services/      # Business logic (vendor, scoring, report, task, notify)
-│       ├── scoring/       # One scorer per dimension + base class
-│       ├── models/        # SQLAlchemy ORM models
-│       ├── schemas/       # Pydantic request/response schemas
-│       └── core/          # Config, database engine, security helpers
+│       ├── api/            # Route handlers ONLY (thin controllers)
+│       ├── services/       # Business logic (vendor, scoring, report, task, notify)
+│       ├── scoring/        # One scorer per dimension + base class
+│       ├── models/         # SQLAlchemy ORM models
+│       ├── schemas/        # Pydantic request/response schemas
+│       └── core/           # Config, database engine, security helpers
 ├── frontend/
 │   └── src/
-│       ├── pages/         # One file per page/route
-│       ├── components/    # Reusable UI components
-│       └── api/           # API client functions (React Query hooks)
+│       ├── pages/          # One file per page/route
+│       ├── components/     # Reusable UI components
+│       └── api/            # API client functions (React Query hooks)
 ├── nginx/
 │   └── nginx.conf
-└── docs/                  # Architecture and phase documentation
+└── docs/                   # Architecture, phase docs, criteria
 ```
+
+### MCP Server Conventions
+
+- All tools live in `mcp-server/src/tools/<tool-name>.ts`
+- All resources live in `mcp-server/src/resources/<resource-name>.ts`
+- Use `zod` for input schema validation on every tool
+- The MCP server authenticates to FastAPI using a service account JWT stored in `MCP_SERVICE_TOKEN` env var
+- Never expose raw DB or internal errors in tool responses — return user-friendly messages
+- Each tool must have a clear `description` and `inputSchema` for discoverability
 
 ### Backend Conventions
 
@@ -73,6 +98,31 @@ vendor-assessment-poc/
 - API calls are wrapped in React Query hooks inside `src/api/`
 - Use shadcn/ui components first before writing custom ones
 - TypeScript strict mode — no `any` types
+
+---
+
+## MCP Tools Reference
+
+| Tool                    | Description                   | Key Inputs                                                |
+| ----------------------- | ----------------------------- | --------------------------------------------------------- |
+| `submit_vendor`         | Create a vendor record        | company_name, website, country, tech_stack, contacts, ... |
+| `upload_document`       | Attach a document to a vendor | vendor_id, doc_type, filename, content_base64             |
+| `run_assessment`        | Trigger 8-dimension scoring   | vendor_id                                                 |
+| `get_assessment_status` | Poll assessment progress      | vendor_id                                                 |
+| `get_report`            | Return full structured report | vendor_id                                                 |
+| `list_vendors`          | Query vendor pipeline         | status?, risk_flag?, search?                              |
+| `get_tasks`             | Get action items              | vendor_id?, department?, status?                          |
+| `update_task`           | Change task status/assignee   | task_id, status, assigned_to?                             |
+| `approve_vendor`        | Set cleared/rejected          | vendor_id, decision, reason                               |
+| `get_analytics`         | Metrics and time-to-onboard   | from_date?, to_date?                                      |
+
+## MCP Resources Reference
+
+| Resource URI           | Description                         |
+| ---------------------- | ----------------------------------- |
+| `vendor://list`        | Live vendor pipeline snapshot       |
+| `vendor://{id}/report` | Full assessment report for a vendor |
+| `tasks://{department}` | Open tasks for a department         |
 
 ---
 
@@ -158,13 +208,14 @@ Final Dimension Score = 0.6 × RulesScore + 0.4 × LLMScore
 
 ## Delivery Phases
 
-| Phase | Name                        | Status     | Key Deliverable                                |
-| ----- | --------------------------- | ---------- | ---------------------------------------------- |
-| 1     | Foundation & Infrastructure | 🔲 Pending | Docker stack, DB schema, vendor intake form    |
-| 2     | Scoring Engine              | 🔲 Pending | Rules + LLM scoring across 8 dimensions        |
-| 3     | Reporting & Task Management | 🔲 Pending | PDF reports, auto-task creation, notifications |
-| 4     | Dashboard & Analytics       | 🔲 Pending | Full assessor UI, role views, metrics          |
-| 5     | PoC Validation              | 🔲 Pending | End-to-end test, metrics, stakeholder demo     |
+| Phase | Name                        | Status     | Key Deliverable                                     |
+| ----- | --------------------------- | ---------- | --------------------------------------------------- |
+| 0     | MCP Server (Primary)        | 🔲 Pending | MCP server with 10 tools + 3 resources, minimal API |
+| 1     | Foundation & Infrastructure | 🔲 Pending | Docker stack, DB schema, vendor intake form         |
+| 2     | Scoring Engine              | 🔲 Pending | Rules + LLM scoring across 8 dimensions             |
+| 3     | Reporting & Task Management | 🔲 Pending | PDF reports, auto-task creation, notifications      |
+| 4     | Dashboard & Analytics       | 🔲 Pending | Full assessor UI, role views, metrics               |
+| 5     | PoC Validation              | 🔲 Pending | End-to-end test, metrics, stakeholder demo          |
 
 Refer to `docs/phase-N-*.md` for detailed tasks within each phase.
 
@@ -172,33 +223,37 @@ Refer to `docs/phase-N-*.md` for detailed tasks within each phase.
 
 ## Key Design Decisions (Do Not Change Without Discussion)
 
-| Decision                     | Rationale                                                    |
-| ---------------------------- | ------------------------------------------------------------ |
-| FastAPI over Django          | Async-native, faster to prototype, excellent OpenAPI docs    |
-| PostgreSQL over SQLite       | Concurrent writes, JSON column support, production-viable    |
-| OpenRouter over local Ollama | Reliable free-tier models without GPU requirements           |
-| Mailhog over real SMTP       | Zero config, zero cost, PoC-appropriate                      |
-| WeasyPrint over Puppeteer    | Pure Python, simpler Docker build, no Chromium dependency    |
-| React + shadcn/ui            | Fast enterprise-looking UI without a designer                |
-| React Query over Redux       | Server state management is sufficient; avoids Redux overhead |
+| Decision                        | Rationale                                                    |
+| ------------------------------- | ------------------------------------------------------------ |
+| MCP server as primary interface | AI agents can orchestrate full vendor vetting without UI     |
+| TypeScript for MCP server       | Official MCP SDK is TS-first; matches Cline's native env     |
+| FastAPI over Django             | Async-native, faster to prototype, excellent OpenAPI docs    |
+| PostgreSQL over SQLite          | Concurrent writes, JSON column support, production-viable    |
+| OpenRouter over local Ollama    | Reliable free-tier models without GPU requirements           |
+| Mailhog over real SMTP          | Zero config, zero cost, PoC-appropriate                      |
+| WeasyPrint over Puppeteer       | Pure Python, simpler Docker build, no Chromium dependency    |
+| React + shadcn/ui               | Fast enterprise-looking UI without a designer                |
+| React Query over Redux          | Server state management is sufficient; avoids Redux overhead |
 
 ---
 
 ## Environment Variables
 
 - All configuration via `.env` (copied from `.env.example`)
-- Key variables: `OPENROUTER_API_KEY`, `POSTGRES_PASSWORD`, `JWT_SECRET`
+- Key variables: `OPENROUTER_API_KEY`, `POSTGRES_PASSWORD`, `JWT_SECRET`, `MCP_SERVICE_TOKEN`
 - Never hardcode secrets or commit `.env` to version control
 - Use `core/config.py` (pydantic-settings `BaseSettings`) to load and validate env vars
+- MCP server reads `BACKEND_URL` and `MCP_SERVICE_TOKEN` from its own env
 
 ---
 
 ## Docker Compose Services
 
-| Service    | Image                | Internal Port |
-| ---------- | -------------------- | ------------- |
-| `frontend` | `node:20-alpine`     | 3000          |
-| `backend`  | `python:3.11-slim`   | 8000          |
-| `db`       | `postgres:16-alpine` | 5432          |
-| `mailhog`  | `mailhog/mailhog`    | 1025 / 8025   |
-| `nginx`    | `nginx:alpine`       | 80            |
+| Service      | Image                | Internal Port |
+| ------------ | -------------------- | ------------- |
+| `frontend`   | `node:20-alpine`     | 3000          |
+| `backend`    | `python:3.11-slim`   | 8000          |
+| `mcp-server` | `node:20-alpine`     | 3100 (HTTP)   |
+| `db`         | `postgres:16-alpine` | 5432          |
+| `mailhog`    | `mailhog/mailhog`    | 1025 / 8025   |
+| `nginx`      | `nginx:alpine`       | 80            |
