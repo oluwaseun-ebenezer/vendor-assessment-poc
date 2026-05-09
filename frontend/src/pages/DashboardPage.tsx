@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useVendors, useCreateVendor, useUploadDocument } from "@/api/vendors";
+import { useVendors, useCreateVendor, useUploadDocument, lookupVendor } from "@/api/vendors";
 import { useRunAssessment } from "@/api/assessments";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -10,6 +10,7 @@ import { VendorFilters, VendorStatus, RiskFlag } from "@/types";
 import {
   Search, Plus, Building2, CheckCircle, Clock, XCircle,
   ChevronRight, Play, Loader2, Upload, FileText, X,
+  Sparkles, Globe, AlertCircle,
 } from "lucide-react";
 
 function StatCard({
@@ -52,10 +53,19 @@ const DOC_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-interface DocFile {
-  file: File;
-  docType: string;
-}
+interface DocFile { file: File; docType: string; }
+
+const EMPTY_FORM = {
+  company_name: "", website: "", country: "", founded_year: "",
+  employee_count: "", description: "", funding_stage: "",
+  deployment_method: "SaaS", cloud_provider: "", sla_uptime: "",
+  iso27001: false, soc2: false, gdpr_dpa: false, pen_test: false,
+  security_breach: false, eu_data_residency: false,
+  ip_ownership_documented: false, pending_litigation: false,
+  business_continuity_plan: false, in_production: false,
+  enterprise_customers: false, enterprise_pricing: false,
+  api_docs_available: false, multi_region: false,
+};
 
 function SubmitVendorModal({ onClose }: { onClose: () => void }) {
   const createVendor = useCreateVendor();
@@ -63,33 +73,68 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
   const runAssessment = useRunAssessment();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [step, setStep] = useState(1);
+  const [query, setQuery] = useState("");
+  const [looking, setLooking] = useState(false);
+  const [lookupError, setLookupError] = useState("");
+  const [lookupNotes, setLookupNotes] = useState("");
+  const [lookupConfidence, setLookupConfidence] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [docs, setDocs] = useState<DocFile[]>([]);
   const [pendingDocType, setPendingDocType] = useState("legal_doc");
-  const [form, setForm] = useState({
-    company_name: "", website: "", country: "", founded_year: "",
-    employee_count: "", description: "", funding_stage: "",
-    deployment_method: "SaaS", cloud_provider: "",
-    iso27001: false, soc2: false, gdpr_dpa: false,
-    pen_test: false, security_breach: false, eu_data_residency: false,
-    ip_ownership_documented: false, pending_litigation: false,
-    business_continuity_plan: false, in_production: false,
-    enterprise_customers: false, sla_uptime: "", api_docs_available: false,
-  });
+  const [form, setForm] = useState({ ...EMPTY_FORM });
 
-  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleLookup = async () => {
+    if (!query.trim()) return;
+    setLooking(true);
+    setLookupError("");
+    try {
+      const data = await lookupVendor(query.trim());
+      setForm({
+        company_name: data.company_name || "",
+        website: data.website || "",
+        country: data.country || "",
+        founded_year: data.founded_year ? String(data.founded_year) : "",
+        employee_count: data.employee_count ? String(data.employee_count) : "",
+        description: data.description || "",
+        funding_stage: data.funding_stage || "",
+        deployment_method: data.deployment_method || "SaaS",
+        cloud_provider: data.cloud_provider || "",
+        sla_uptime: data.sla_uptime || "",
+        iso27001: !!data.iso27001,
+        soc2: !!data.soc2,
+        gdpr_dpa: !!data.gdpr_dpa,
+        pen_test: !!data.pen_test,
+        security_breach: !!data.security_breach,
+        eu_data_residency: !!data.eu_data_residency,
+        ip_ownership_documented: !!data.ip_ownership_documented,
+        pending_litigation: !!data.pending_litigation,
+        business_continuity_plan: !!data.business_continuity_plan,
+        in_production: !!data.in_production,
+        enterprise_customers: !!data.enterprise_customers,
+        enterprise_pricing: !!data.enterprise_pricing,
+        api_docs_available: !!data.api_docs_available,
+        multi_region: !!data.multi_region,
+      });
+      setLookupNotes(data.notes || "");
+      setLookupConfidence(data.confidence || "");
+      setStep(2);
+    } catch {
+      setLookupError("Lookup failed — please fill in details manually.");
+      setStep(2);
+    } finally {
+      setLooking(false);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const newDocs = files.map(f => ({ file: f, docType: pendingDocType }));
-    setDocs(prev => [...prev, ...newDocs]);
+    setDocs(prev => [...prev, ...files.map(f => ({ file: f, docType: pendingDocType }))]);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const removeDoc = (index: number) => {
-    setDocs(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -100,15 +145,10 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
         founded_year: form.founded_year ? parseInt(form.founded_year) : undefined,
         employee_count: form.employee_count ? parseInt(form.employee_count) : undefined,
       });
-
-      if (docs.length > 0) {
-        for (let i = 0; i < docs.length; i++) {
-          const { file, docType } = docs[i];
-          setUploadProgress(`Uploading document ${i + 1} of ${docs.length}...`);
-          await uploadDocument.mutateAsync({ vendorId: vendor.id, file, docType });
-        }
+      for (let i = 0; i < docs.length; i++) {
+        setUploadProgress(`Uploading document ${i + 1} of ${docs.length}...`);
+        await uploadDocument.mutateAsync({ vendorId: vendor.id, file: docs[i].file, docType: docs[i].docType });
       }
-
       setUploadProgress("Starting assessment...");
       await runAssessment.mutateAsync(vendor.id);
       navigate(`/vendors/${vendor.id}`);
@@ -122,11 +162,12 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
   const inputCls = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#D4002A]/20 focus:border-[#D4002A]";
   const labelCls = "block text-xs font-medium text-gray-600 mb-1";
   const checkCls = "flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none";
-  const STEPS = ["Company Info", "Security & Legal", "Documents", "Review"];
+  const STEPS = ["Identify", "Confirm & Documents", "Review"];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
@@ -149,210 +190,260 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+          {/* ── STEP 1: Identify ── */}
           {step === 1 && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className={labelCls}>Company Name *</label>
-                <input className={inputCls} value={form.company_name} onChange={e => set("company_name", e.target.value)} placeholder="Acme AI Ltd" />
+            <div className="space-y-5">
+              <div className="bg-[#1C1C2E] rounded-xl p-5 text-white">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-4 w-4 text-[#D4002A]" />
+                  <span className="text-sm font-semibold">AI-Powered Lookup</span>
+                </div>
+                <p className="text-white/60 text-xs leading-relaxed">
+                  Enter a website URL or company name. Our AI will research the vendor and pre-fill all assessment fields — you just confirm and submit.
+                </p>
               </div>
+
               <div>
-                <label className={labelCls}>Website</label>
-                <input className={inputCls} value={form.website} onChange={e => set("website", e.target.value)} placeholder="https://acme.ai" />
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Vendor URL or Company Name
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Globe className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <input
+                      className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#D4002A]/20 focus:border-[#D4002A]"
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && !looking && query.trim() && handleLookup()}
+                      placeholder="https://acme.ai  or  Acme AI Ltd"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    onClick={handleLookup}
+                    disabled={!query.trim() || looking}
+                    className="flex items-center gap-2 bg-[#D4002A] hover:bg-[#b0001f] disabled:opacity-40 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
+                  >
+                    {looking
+                      ? <><Loader2 className="h-4 w-4 animate-spin" />Looking up...</>
+                      : <><Sparkles className="h-4 w-4" />Look up</>}
+                  </button>
+                </div>
+                {lookupError && (
+                  <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />{lookupError}
+                  </p>
+                )}
               </div>
-              <div>
-                <label className={labelCls}>Country</label>
-                <input className={inputCls} value={form.country} onChange={e => set("country", e.target.value)} placeholder="Denmark" />
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-100" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-3 text-xs text-gray-400">or fill in manually</span>
+                </div>
               </div>
-              <div>
-                <label className={labelCls}>Founded Year</label>
-                <input className={inputCls} type="number" value={form.founded_year} onChange={e => set("founded_year", e.target.value)} placeholder="2021" />
-              </div>
-              <div>
-                <label className={labelCls}>Employees</label>
-                <input className={inputCls} type="number" value={form.employee_count} onChange={e => set("employee_count", e.target.value)} placeholder="25" />
-              </div>
-              <div>
-                <label className={labelCls}>Funding Stage</label>
-                <select className={inputCls} value={form.funding_stage} onChange={e => set("funding_stage", e.target.value)}>
-                  <option value="">Select...</option>
-                  {["pre-seed","seed","Series A","Series B","growth","public"].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Deployment</label>
-                <select className={inputCls} value={form.deployment_method} onChange={e => set("deployment_method", e.target.value)}>
-                  {["SaaS","On-premise","Hybrid"].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className={labelCls}>Description</label>
-                <textarea className={inputCls} rows={3} value={form.description} onChange={e => set("description", e.target.value)} placeholder="What does this vendor do and how will Carlsberg use them?" />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Company Name *</label>
+                  <input className={inputCls} value={form.company_name} onChange={e => set("company_name", e.target.value)} placeholder="Acme AI Ltd" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Website</label>
+                  <input className={inputCls} value={form.website} onChange={e => set("website", e.target.value)} placeholder="https://acme.ai" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Country</label>
+                  <input className={inputCls} value={form.country} onChange={e => set("country", e.target.value)} placeholder="DK" />
+                </div>
               </div>
             </div>
           )}
 
+          {/* ── STEP 2: Confirm & Documents ── */}
           {step === 2 && (
-            <div className="space-y-6">
+            <div className="space-y-5">
+              {/* AI confidence badge */}
+              {lookupConfidence && (
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
+                  lookupConfidence === "high" ? "bg-emerald-50 text-emerald-700"
+                  : lookupConfidence === "medium" ? "bg-amber-50 text-amber-700"
+                  : "bg-gray-50 text-gray-600"
+                }`}>
+                  <Sparkles className="h-3 w-3" />
+                  AI prefilled — confidence: <strong>{lookupConfidence}</strong>
+                  <span className="ml-1 font-normal opacity-70">· Review and correct any fields below</span>
+                </div>
+              )}
+              {lookupNotes && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-700">
+                  <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  {lookupNotes}
+                </div>
+              )}
+
+              {/* Company info */}
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-3">Security & Compliance</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Company</p>
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className={labelCls}>Company Name *</label>
+                    <input className={inputCls} value={form.company_name} onChange={e => set("company_name", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Website</label>
+                    <input className={inputCls} value={form.website} onChange={e => set("website", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Country (ISO)</label>
+                    <input className={inputCls} value={form.country} onChange={e => set("country", e.target.value)} placeholder="DK" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Founded Year</label>
+                    <input className={inputCls} type="number" value={form.founded_year} onChange={e => set("founded_year", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Employees</label>
+                    <input className={inputCls} type="number" value={form.employee_count} onChange={e => set("employee_count", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Funding Stage</label>
+                    <select className={inputCls} value={form.funding_stage} onChange={e => set("funding_stage", e.target.value)}>
+                      <option value="">Unknown</option>
+                      {["pre-seed","seed","Series A","Series B","Series C","growth","public","bootstrapped"].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Deployment</label>
+                    <select className={inputCls} value={form.deployment_method} onChange={e => set("deployment_method", e.target.value)}>
+                      {["SaaS","On-premise","Hybrid"].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className={labelCls}>Description</label>
+                    <textarea className={inputCls} rows={2} value={form.description} onChange={e => set("description", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Security & Legal */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Security, Legal & Commercial</p>
+                <div className="grid grid-cols-2 gap-2">
                   {[
-                    { k: "iso27001", label: "ISO 27001 Certified" },
+                    { k: "iso27001", label: "ISO 27001" },
                     { k: "soc2", label: "SOC 2 Type II" },
                     { k: "gdpr_dpa", label: "GDPR DPA Signed" },
-                    { k: "pen_test", label: "Pen Test (12 months)" },
-                    { k: "security_breach", label: "Security Breach Disclosed" },
+                    { k: "pen_test", label: "Pen Test Done" },
                     { k: "eu_data_residency", label: "EU Data Residency" },
-                  ].map(({ k, label }) => (
-                    <label key={k} className={checkCls}>
-                      <input type="checkbox" checked={form[k as keyof typeof form] as boolean}
-                        onChange={e => set(k, e.target.checked)}
-                        className="w-4 h-4 accent-[#D4002A]" />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-3">Legal & Commercial</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { k: "ip_ownership_documented", label: "IP Ownership Documented" },
-                    { k: "pending_litigation", label: "Pending Litigation" },
-                    { k: "business_continuity_plan", label: "BCP in Place" },
                     { k: "in_production", label: "In Production" },
                     { k: "enterprise_customers", label: "Enterprise Customers" },
+                    { k: "enterprise_pricing", label: "Enterprise Pricing" },
                     { k: "api_docs_available", label: "API Docs Available" },
+                    { k: "multi_region", label: "Multi-Region" },
+                    { k: "business_continuity_plan", label: "BCP in Place" },
+                    { k: "pending_litigation", label: "Pending Litigation" },
+                    { k: "security_breach", label: "Security Breach" },
+                    { k: "ip_ownership_documented", label: "IP Ownership Documented" },
                   ].map(({ k, label }) => (
                     <label key={k} className={checkCls}>
-                      <input type="checkbox" checked={form[k as keyof typeof form] as boolean}
+                      <input type="checkbox" checked={!!form[k as keyof typeof form]}
                         onChange={e => set(k, e.target.checked)}
                         className="w-4 h-4 accent-[#D4002A]" />
-                      {label}
+                      <span className="text-xs">{label}</span>
                     </label>
                   ))}
                 </div>
+                <div className="mt-3">
+                  <label className={labelCls}>Uptime SLA</label>
+                  <input className={inputCls} value={form.sla_uptime} onChange={e => set("sla_uptime", e.target.value)} placeholder="99.9%" />
+                </div>
               </div>
+
+              {/* Documents */}
               <div>
-                <label className={labelCls}>Uptime SLA</label>
-                <input className={inputCls} value={form.sla_uptime} onChange={e => set("sla_uptime", e.target.value)} placeholder="99.9%" />
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Documents <span className="normal-case font-normal text-gray-400">(optional — improves LLM scoring)</span>
+                </p>
+                <div className="flex gap-2 mb-2">
+                  <select className={`flex-1 text-xs ${inputCls}`} value={pendingDocType} onChange={e => setPendingDocType(e.target.value)}>
+                    {DOC_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
+                  </select>
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1C1C2E] hover:bg-[#2d2d42] text-white text-xs font-medium rounded-lg transition-colors">
+                    <Upload className="h-3.5 w-3.5" />Browse
+                  </button>
+                  <input ref={fileInputRef} type="file" multiple accept=".pdf,.txt,.docx,.doc,.png,.jpg" className="hidden" onChange={handleFileSelect} />
+                </div>
+                <div className="border-2 border-dashed border-gray-100 rounded-lg p-4 text-center cursor-pointer hover:border-[#D4002A]/30 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); setDocs(p => [...p, ...Array.from(e.dataTransfer.files).map(f => ({ file: f, docType: pendingDocType }))]); }}>
+                  <p className="text-xs text-gray-400">Drop files or click Browse — PDF, TXT, DOCX</p>
+                </div>
+                {docs.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {docs.map((d, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                        <FileText className="h-3.5 w-3.5 text-[#D4002A] flex-shrink-0" />
+                        <span className="text-xs text-gray-700 flex-1 truncate">{d.file.name}</span>
+                        <select className="text-xs border border-gray-200 rounded px-1.5 py-0.5"
+                          value={d.docType}
+                          onChange={e => setDocs(p => p.map((x, j) => j === i ? { ...x, docType: e.target.value } : x))}>
+                          {DOC_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
+                        </select>
+                        <button onClick={() => setDocs(p => p.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-500">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
+          {/* ── STEP 3: Review ── */}
           {step === 3 && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Upload supporting documents — MSA drafts, security whitepapers, financial statements.
-                The LLM scorer will analyse these to enrich the assessment.
-                <span className="text-gray-400"> (Optional — you can also upload later from the vendor detail page)</span>
-              </p>
-
-              {/* Upload controls */}
-              <div className="flex gap-2">
-                <select
-                  className={`flex-1 ${inputCls}`}
-                  value={pendingDocType}
-                  onChange={e => setPendingDocType(e.target.value)}
-                >
-                  {DOC_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#1C1C2E] hover:bg-[#2d2d42] text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  <Upload className="h-4 w-4" />
-                  Browse
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".pdf,.txt,.docx,.doc,.png,.jpg"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-              </div>
-
-              {/* Drop zone */}
-              <div
-                className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-[#D4002A]/40 hover:bg-red-50/30 transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => {
-                  e.preventDefault();
-                  const files = Array.from(e.dataTransfer.files);
-                  setDocs(prev => [...prev, ...files.map(f => ({ file: f, docType: pendingDocType }))]);
-                }}
-              >
-                <Upload className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Drop files here or click Browse</p>
-                <p className="text-xs text-gray-400 mt-1">PDF, TXT, DOCX, images supported</p>
-              </div>
-
-              {/* Queued files */}
-              {docs.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-gray-500">{docs.length} file{docs.length !== 1 ? "s" : ""} queued for upload</p>
-                  {docs.map((d, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <FileText className="h-4 w-4 text-[#D4002A] flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{d.file.name}</p>
-                        <p className="text-xs text-gray-400">
-                          {DOC_TYPES.find(dt => dt.value === d.docType)?.label} ·{" "}
-                          {(d.file.size / 1024).toFixed(0)} KB
-                        </p>
-                      </div>
-                      <select
-                        className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none"
-                        value={d.docType}
-                        onChange={e => setDocs(prev => prev.map((doc, j) => j === i ? { ...doc, docType: e.target.value } : doc))}
-                      >
-                        {DOC_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
-                      </select>
-                      <button onClick={() => removeDoc(i)} className="text-gray-300 hover:text-red-500 transition-colors">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="space-y-4">
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Company</span><span className="font-medium">{form.company_name}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Country</span><span>{form.country || "—"}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Employees</span><span>{form.employee_count || "—"}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Funding</span><span>{form.funding_stage || "—"}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">ISO 27001</span><span>{form.iso27001 ? "✅ Yes" : "❌ No"}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">SOC 2</span><span>{form.soc2 ? "✅ Yes" : "❌ No"}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">GDPR DPA</span><span>{form.gdpr_dpa ? "✅ Yes" : "❌ No"}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Pending Litigation</span><span>{form.pending_litigation ? "⚠️ Yes" : "✅ No"}</span></div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Documents</span>
-                  <span>{docs.length > 0 ? `${docs.length} file${docs.length !== 1 ? "s" : ""} queued` : "None"}</span>
-                </div>
-              </div>
-              {docs.length > 0 && (
-                <div className="space-y-1">
-                  {docs.map((d, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
-                      <FileText className="h-3 w-3 text-[#D4002A]" />
-                      <span className="truncate">{d.file.name}</span>
-                      <span className="text-gray-300">·</span>
-                      <span>{DOC_TYPES.find(dt => dt.value === d.docType)?.label}</span>
+                {[
+                  ["Company", form.company_name],
+                  ["Website", form.website],
+                  ["Country", form.country],
+                  ["Employees", form.employee_count],
+                  ["Funding", form.funding_stage],
+                  ["Deployment", form.deployment_method],
+                ].map(([k, v]) => v ? (
+                  <div key={k} className="flex justify-between">
+                    <span className="text-gray-500">{k}</span>
+                    <span className="font-medium">{v}</span>
+                  </div>
+                ) : null)}
+                <div className="pt-2 border-t border-gray-200 grid grid-cols-2 gap-1 text-xs">
+                  {[
+                    ["ISO 27001", form.iso27001], ["SOC 2", form.soc2],
+                    ["GDPR DPA", form.gdpr_dpa], ["Pen Test", form.pen_test],
+                    ["EU Data Residency", form.eu_data_residency], ["In Production", form.in_production],
+                    ["Pending Litigation", form.pending_litigation],
+                  ].map(([k, v]) => (
+                    <div key={k as string} className="flex justify-between">
+                      <span className="text-gray-400">{k as string}</span>
+                      <span>{v ? "✅" : "❌"}</span>
                     </div>
                   ))}
                 </div>
-              )}
+                <div className="flex justify-between text-xs pt-1 border-t border-gray-200">
+                  <span className="text-gray-500">Documents</span>
+                  <span>{docs.length > 0 ? `${docs.length} file${docs.length !== 1 ? "s" : ""}` : "None"}</span>
+                </div>
+              </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                <strong>Next:</strong> Vendor created → documents uploaded → 8-dimension LLM scoring runs automatically. You'll be redirected to the vendor detail page.
+                <strong>Next:</strong> Vendor created → documents uploaded → 8-dimension AI scoring runs automatically. You'll be redirected to the vendor detail page.
               </div>
             </div>
           )}
@@ -366,15 +457,26 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
           >
             {step > 1 ? "← Back" : "Cancel"}
           </button>
-          {step < STEPS.length ? (
+
+          {step === 1 && (
             <button
-              onClick={() => setStep(s => s + 1)}
-              disabled={step === 1 && !form.company_name}
+              onClick={() => form.company_name ? setStep(2) : handleLookup()}
+              disabled={!query.trim() && !form.company_name || looking}
+              className="bg-[#D4002A] hover:bg-[#b0001f] disabled:opacity-40 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2"
+            >
+              {looking ? <><Loader2 className="h-4 w-4 animate-spin" />Looking up...</> : <>Continue →</>}
+            </button>
+          )}
+          {step === 2 && (
+            <button
+              onClick={() => setStep(3)}
+              disabled={!form.company_name}
               className="bg-[#D4002A] hover:bg-[#b0001f] disabled:opacity-40 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
             >
               Continue →
             </button>
-          ) : (
+          )}
+          {step === 3 && (
             <button
               onClick={handleSubmit}
               disabled={submitting}

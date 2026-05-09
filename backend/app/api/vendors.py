@@ -15,6 +15,18 @@ from app.schemas.vendor import VendorCreate, VendorUpdate, VendorResponse, Vendo
 router = APIRouter(prefix="/api/vendors", tags=["vendors"])
 
 
+@router.post("/lookup")
+async def lookup_vendor(
+    body: dict,
+    current_user_id: str = Depends(get_current_user_id),
+):
+    from app.services.lookup_service import lookup_vendor as _lookup
+    query = body.get("query", "").strip()
+    if not query:
+        raise HTTPException(status_code=422, detail="query is required")
+    return await _lookup(query)
+
+
 @router.post("", response_model=VendorResponse, status_code=201)
 async def create_vendor(
     body: VendorCreate,

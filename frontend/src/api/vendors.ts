@@ -2,6 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import { Vendor, VendorListItem, VendorFilters } from "@/types";
 
+// Lookup vendor by URL or name (LLM prefill)
+export const lookupVendor = async (query: string) => {
+  const response = await apiClient.post("/vendors/lookup", { query });
+  return response.data;
+};
+
 // List vendors
 export const useVendors = (filters?: VendorFilters) => {
   return useQuery({
