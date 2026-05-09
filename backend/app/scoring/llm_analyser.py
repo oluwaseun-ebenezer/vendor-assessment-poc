@@ -1,17 +1,14 @@
 import asyncio
 import json
+import logging
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 
-def _is_retryable(exc: BaseException) -> bool:
-    if isinstance(exc, httpx.HTTPStatusError):
-        return exc.response.status_code in (429, 500, 502, 503, 504)
-    return isinstance(exc, (httpx.TimeoutException, httpx.ConnectError))
-
-
-FALLBACK_MODELS = [
+# Free-tier fallbacks tried in order when the project model is rate-limited.
+# These are only used if the project-configured model returns 429.
+RATE_LIMIT_FALLBACKS = [
     "openai/gpt-oss-20b:free",
     "openai/gpt-oss-120b:free",
     "nvidia/nemotron-3-super-120b-a12b:free",
@@ -70,27 +67,35 @@ class LLMAnalyser:
         )
         system_content = f"{self.system_prompt}\n\n{base_system}".strip() if self.system_prompt else base_system
 
-        # Build fallback chain — primary model first, then fallbacks
+        # Primary: always use the project-configured model first
+        # Fallback: only if the project model is rate-limited (429), try others
         models_to_try = [self.model]
-        for m in FALLBACK_MODELS:
+        for m in RATE_LIMIT_FALLBACKS:
             if m != self.model:
                 models_to_try.append(m)
 
         last_error = None
-        for model in models_to_try:
+        for i, model in enumerate(models_to_try):
             try:
-                return await self._call_model(model, system_content, prompt)
+                score, reasoning = await self._call_model(model, system_content, prompt)
+                if i > 0:
+                    # Fell back — note which model was used
+                    logger.info(f"LLM fell back to '{model}' (project model '{self.model}' was rate-limited)")
+                    reasoning = f"[via {model}] {reasoning}"
+                return score, reasoning
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
                     last_error = e
+                    logger.warning(f"Model '{model}' rate-limited (429), trying next fallback...")
                     await asyncio.sleep(3)
                     continue
+                # Non-429 HTTP errors (401, 400 etc) — don't fallback, surface immediately
                 raise
             except Exception as e:
                 last_error = e
                 continue
 
-        raise last_error or RuntimeError("All LLM models failed")
+        raise last_error or RuntimeError("All LLM models exhausted")
 
     async def close(self):
         await self.client.aclose()

@@ -16,14 +16,14 @@ const DEFAULT_WEIGHTS = {
 };
 
 const AVAILABLE_MODELS = [
-  { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (Free)" },
-  { id: "openai/gpt-oss-20b:free", label: "GPT OSS 20B (Free)" },
-  { id: "openai/gpt-oss-120b:free", label: "GPT OSS 120B (Free)" },
-  { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 120B (Free)" },
-  { id: "qwen/qwen3-next-80b-a3b-instruct:free", label: "Qwen3 80B (Free)" },
-  { id: "openai/gpt-4o", label: "GPT-4o (Paid)" },
-  { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet (Paid)" },
-  { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash (Paid)" },
+  { id: "openai/gpt-oss-20b:free", label: "GPT OSS 20B · Free (recommended)" },
+  { id: "openai/gpt-oss-120b:free", label: "GPT OSS 120B · Free" },
+  { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 120B · Free" },
+  { id: "minimax/minimax-m2.5:free", label: "MiniMax M2.5 · Free" },
+  { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B · Free (may rate-limit)" },
+  { id: "openai/gpt-4o", label: "GPT-4o · Paid" },
+  { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet · Paid" },
+  { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash · Paid" },
 ];
 
 const DIMENSION_LABELS: Record<string, string> = {
