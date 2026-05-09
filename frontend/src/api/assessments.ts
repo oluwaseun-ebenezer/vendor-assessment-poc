@@ -23,8 +23,10 @@ export const useRunAssessment = () => {
   });
 };
 
-// Get assessment status (for polling)
+// Get assessment status (for polling) — invalidates results + vendor when complete
 export const useAssessmentStatus = (vendorId?: string, enabled = true) => {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: ["assessmentStatus", vendorId],
     queryFn: async () => {
@@ -36,16 +38,25 @@ export const useAssessmentStatus = (vendorId?: string, enabled = true) => {
     enabled: !!vendorId && enabled,
     refetchInterval: (query) => {
       const data = query.state.data;
-      // Only poll if status is pending or running
       if (data?.status === "pending" || data?.status === "running") {
         return ASSESSMENT_POLL_INTERVAL;
       }
       return false;
     },
+    select: (data) => {
+      if (data?.status === "complete" || data?.status === "failed") {
+        // Invalidate so results, vendor, tasks all refresh automatically
+        queryClient.invalidateQueries({ queryKey: ["assessmentResults", vendorId] });
+        queryClient.invalidateQueries({ queryKey: ["vendor", vendorId] });
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      }
+      return data;
+    },
   });
 };
 
-// Get assessment results
+// Get assessment results — refetches while assessment is still running
 export const useAssessmentResults = (vendorId?: string) => {
   return useQuery({
     queryKey: ["assessmentResults", vendorId],
@@ -56,5 +67,12 @@ export const useAssessmentResults = (vendorId?: string) => {
       return response.data;
     },
     enabled: !!vendorId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.assessment?.status;
+      if (status === "pending" || status === "running") {
+        return ASSESSMENT_POLL_INTERVAL;
+      }
+      return false;
+    },
   });
 };

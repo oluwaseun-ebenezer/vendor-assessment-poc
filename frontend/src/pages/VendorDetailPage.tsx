@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useVendor } from "@/api/vendors";
 import { useAssessmentResults, useRunAssessment, useAssessmentStatus } from "@/api/assessments";
@@ -176,11 +176,21 @@ export function VendorDetailPage() {
   const [showApprove, setShowApprove] = useState(false);
 
   const { data: vendor, isLoading } = useVendor(id);
-  const { data: assessmentResults, refetch: refetchResults } = useAssessmentResults(id);
+  const { data: assessmentResults } = useAssessmentResults(id);
   const { data: assessmentStatus } = useAssessmentStatus(id);
   const { data: tasks } = useTasks({ vendor_id: id });
   const updateTask = useUpdateTask();
   const runAssessment = useRunAssessment();
+  const prevStatus = useRef<string | undefined>(undefined);
+
+  // Auto-switch to Assessment tab and show completion when assessment finishes
+  useEffect(() => {
+    const status = assessmentStatus?.status;
+    if (prevStatus.current === "running" && status === "complete") {
+      setActiveTab("Assessment");
+    }
+    prevStatus.current = status;
+  }, [assessmentStatus?.status]);
 
   if (isLoading || !vendor) {
     return (
@@ -197,10 +207,7 @@ export function VendorDetailPage() {
   const dimensions = assessmentResults?.dimension_scores || [];
 
   const handleRunAssessment = async () => {
-    if (id) {
-      await runAssessment.mutateAsync(id);
-      setTimeout(() => refetchResults(), 15000);
-    }
+    if (id) await runAssessment.mutateAsync(id);
   };
 
   const handleDownloadPDF = async () => {
@@ -228,6 +235,35 @@ export function VendorDetailPage() {
         <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700">
           <ArrowLeft className="h-4 w-4" /> Back to pipeline
         </button>
+
+        {/* Live assessment progress banner */}
+        {isAssessing && (
+          <div className="bg-[#1C1C2E] rounded-xl px-5 py-4 flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              <Loader2 className="h-6 w-6 text-[#D4002A] animate-spin" />
+            </div>
+            <div className="flex-1">
+              <p className="text-white text-sm font-medium">Assessment in progress</p>
+              <p className="text-white/50 text-xs mt-0.5">
+                Running 8-dimension AI scoring — this page will update automatically when complete
+              </p>
+            </div>
+            <div className="flex gap-1 flex-shrink-0">
+              {[0,1,2].map(i => (
+                <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#D4002A] animate-bounce"
+                  style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {assessmentStatus?.status === "complete" && !assessment && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-3 flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+            <p className="text-emerald-700 text-sm font-medium">Assessment complete — loading results...</p>
+            <Loader2 className="h-4 w-4 text-emerald-400 animate-spin ml-auto" />
+          </div>
+        )}
 
         {/* Header card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
