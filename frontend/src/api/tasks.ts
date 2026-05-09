@@ -10,7 +10,7 @@ export const useTasks = (filters?: TaskFilters) => {
       const params = new URLSearchParams();
       if (filters?.vendor_id) params.append("vendor_id", filters.vendor_id);
       if (filters?.department) params.append("department", filters.department);
-      if (filters?.status) params.append("status", filters.status);
+      if (filters?.status) params.append("status_filter", filters.status);
 
       const response = await apiClient.get<Task[]>(
         `/tasks?${params.toString()}`,

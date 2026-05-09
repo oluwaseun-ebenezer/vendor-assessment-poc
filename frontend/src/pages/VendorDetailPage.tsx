@@ -62,9 +62,7 @@ export function VendorDetailPage() {
               <div className="flex gap-4 mt-4">
                 <StatusBadge status={vendor.status} />
                 {assessmentResults && (
-                  <RiskFlagBadge
-                    flag={assessmentResults.assessment.risk_flag}
-                  />
+                  <RiskFlagBadge flag={assessmentResults.assessment.risk_flag ?? undefined} />
                 )}
               </div>
             </div>
@@ -82,7 +80,24 @@ export function VendorDetailPage() {
                   </>
                 )}
               </Button>
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const token = localStorage.getItem("access_token");
+                  const res = await fetch(`/api/reports/${id}/pdf`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (res.ok) {
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${vendor.company_name}-report.pdf`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }
+                }}
+              >
                 <FileText className="h-4 w-4 mr-2" />
                 Download PDF
               </Button>
@@ -170,11 +185,11 @@ export function VendorDetailPage() {
                     <CardContent>
                       <div className="flex items-center justify-between">
                         <span
-                          className={`text-2xl font-bold ${getScoreColor(dimension.score)}`}
+                          className={`text-2xl font-bold ${getScoreColor(dimension.composite_score)}`}
                         >
-                          {formatScore(dimension.score)}
+                          {formatScore(dimension.composite_score)}
                         </span>
-                        <RiskFlagBadge flag={dimension.flag} />
+                        <RiskFlagBadge flag={dimension.risk_flag} />
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
                         {DIMENSION_INFO[dimension.dimension].owner}

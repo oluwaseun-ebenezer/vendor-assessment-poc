@@ -91,8 +91,10 @@ export function LoginPage() {
             <div className="mt-6 text-sm text-gray-500">
               <p>Demo credentials:</p>
               <ul className="mt-2 space-y-1 text-xs">
-                <li>• admin@example.com / admin123</li>
-                <li>• procurement@example.com / password</li>
+                <li>• admin@carlsberg.com / ChangeMe123!</li>
+                <li>• procurement@carlsberg.com / ChangeMe123!</li>
+                <li>• security@carlsberg.com / ChangeMe123!</li>
+                <li>• legal@carlsberg.com / ChangeMe123!</li>
               </ul>
             </div>
           </CardContent>

@@ -12,7 +12,7 @@ export const useAnalytics = (fromDate?: string, toDate?: string) => {
       if (toDate) params.append("to_date", toDate);
 
       const response = await apiClient.get<Analytics>(
-        `/analytics?${params.toString()}`,
+        `/analytics/summary?${params.toString()}`,
       );
       return response.data;
     },

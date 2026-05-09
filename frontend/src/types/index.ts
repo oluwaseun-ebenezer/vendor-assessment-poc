@@ -93,10 +93,12 @@ export interface DimensionScore {
   id: string;
   assessment_id: string;
   dimension: DimensionType;
-  score: number;
-  flag: RiskFlag;
+  composite_score: number;
+  rules_score: number;
+  llm_score: number;
+  risk_flag: RiskFlag;
   evidence: Record<string, any>;
-  reasoning?: string;
+  llm_reasoning?: string;
   created_at: string;
 }
 
