@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useVendors, useCreateVendor } from "@/api/vendors";
+import { useVendors, useCreateVendor, useUploadDocument } from "@/api/vendors";
 import { useRunAssessment } from "@/api/assessments";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -9,7 +9,7 @@ import { formatDate, formatScore } from "@/lib/utils";
 import { VendorFilters, VendorStatus, RiskFlag } from "@/types";
 import {
   Search, Plus, Building2, CheckCircle, Clock, XCircle,
-  ChevronRight, Play, Loader2,
+  ChevronRight, Play, Loader2, Upload, FileText, X,
 } from "lucide-react";
 
 function StatCard({
@@ -44,12 +44,30 @@ function SkeletonRow() {
   );
 }
 
+const DOC_TYPES = [
+  { value: "security_whitepaper", label: "Security Whitepaper" },
+  { value: "legal_doc", label: "Legal / MSA Document" },
+  { value: "financial_doc", label: "Financial Document" },
+  { value: "architecture_doc", label: "Architecture Document" },
+  { value: "other", label: "Other" },
+];
+
+interface DocFile {
+  file: File;
+  docType: string;
+}
+
 function SubmitVendorModal({ onClose }: { onClose: () => void }) {
   const createVendor = useCreateVendor();
+  const uploadDocument = useUploadDocument();
   const runAssessment = useRunAssessment();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [docs, setDocs] = useState<DocFile[]>([]);
+  const [pendingDocType, setPendingDocType] = useState("legal_doc");
   const [form, setForm] = useState({
     company_name: "", website: "", country: "", founded_year: "",
     employee_count: "", description: "", funding_stage: "",
@@ -63,6 +81,17 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
 
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newDocs = files.map(f => ({ file: f, docType: pendingDocType }));
+    setDocs(prev => [...prev, ...newDocs]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeDoc = (index: number) => {
+    setDocs(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
@@ -71,17 +100,29 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
         founded_year: form.founded_year ? parseInt(form.founded_year) : undefined,
         employee_count: form.employee_count ? parseInt(form.employee_count) : undefined,
       });
+
+      if (docs.length > 0) {
+        for (let i = 0; i < docs.length; i++) {
+          const { file, docType } = docs[i];
+          setUploadProgress(`Uploading document ${i + 1} of ${docs.length}...`);
+          await uploadDocument.mutateAsync({ vendorId: vendor.id, file, docType });
+        }
+      }
+
+      setUploadProgress("Starting assessment...");
       await runAssessment.mutateAsync(vendor.id);
       navigate(`/vendors/${vendor.id}`);
       onClose();
     } catch {
       setSubmitting(false);
+      setUploadProgress("");
     }
   };
 
   const inputCls = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#D4002A]/20 focus:border-[#D4002A]";
   const labelCls = "block text-xs font-medium text-gray-600 mb-1";
   const checkCls = "flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none";
+  const STEPS = ["Company Info", "Security & Legal", "Documents", "Review"];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -90,7 +131,7 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Submit New Vendor</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Step {step} of 3</p>
+            <p className="text-xs text-gray-500 mt-0.5">Step {step} of {STEPS.length}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-light">✕</button>
         </div>
@@ -98,7 +139,7 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
         {/* Progress */}
         <div className="px-6 pt-4">
           <div className="flex gap-2">
-            {["Company Info", "Security & Legal", "Review"].map((s, i) => (
+            {STEPS.map((s, i) => (
               <div key={s} className="flex-1">
                 <div className={`h-1.5 rounded-full transition-colors ${step > i ? "bg-[#D4002A]" : "bg-gray-100"}`} />
                 <p className={`text-xs mt-1 ${step === i + 1 ? "text-[#D4002A] font-medium" : "text-gray-400"}`}>{s}</p>
@@ -110,47 +151,45 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {step === 1 && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className={labelCls}>Company Name *</label>
-                  <input className={inputCls} value={form.company_name} onChange={e => set("company_name", e.target.value)} placeholder="Acme AI Ltd" />
-                </div>
-                <div>
-                  <label className={labelCls}>Website</label>
-                  <input className={inputCls} value={form.website} onChange={e => set("website", e.target.value)} placeholder="https://acme.ai" />
-                </div>
-                <div>
-                  <label className={labelCls}>Country</label>
-                  <input className={inputCls} value={form.country} onChange={e => set("country", e.target.value)} placeholder="Denmark" />
-                </div>
-                <div>
-                  <label className={labelCls}>Founded Year</label>
-                  <input className={inputCls} type="number" value={form.founded_year} onChange={e => set("founded_year", e.target.value)} placeholder="2021" />
-                </div>
-                <div>
-                  <label className={labelCls}>Employees</label>
-                  <input className={inputCls} type="number" value={form.employee_count} onChange={e => set("employee_count", e.target.value)} placeholder="25" />
-                </div>
-                <div>
-                  <label className={labelCls}>Funding Stage</label>
-                  <select className={inputCls} value={form.funding_stage} onChange={e => set("funding_stage", e.target.value)}>
-                    <option value="">Select...</option>
-                    {["pre-seed","seed","Series A","Series B","growth","public"].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Deployment</label>
-                  <select className={inputCls} value={form.deployment_method} onChange={e => set("deployment_method", e.target.value)}>
-                    {["SaaS","On-premise","Hybrid"].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className={labelCls}>Description</label>
-                  <textarea className={inputCls} rows={3} value={form.description} onChange={e => set("description", e.target.value)} placeholder="What does this vendor do and how will Carlsberg use them?" />
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className={labelCls}>Company Name *</label>
+                <input className={inputCls} value={form.company_name} onChange={e => set("company_name", e.target.value)} placeholder="Acme AI Ltd" />
               </div>
-            </>
+              <div>
+                <label className={labelCls}>Website</label>
+                <input className={inputCls} value={form.website} onChange={e => set("website", e.target.value)} placeholder="https://acme.ai" />
+              </div>
+              <div>
+                <label className={labelCls}>Country</label>
+                <input className={inputCls} value={form.country} onChange={e => set("country", e.target.value)} placeholder="Denmark" />
+              </div>
+              <div>
+                <label className={labelCls}>Founded Year</label>
+                <input className={inputCls} type="number" value={form.founded_year} onChange={e => set("founded_year", e.target.value)} placeholder="2021" />
+              </div>
+              <div>
+                <label className={labelCls}>Employees</label>
+                <input className={inputCls} type="number" value={form.employee_count} onChange={e => set("employee_count", e.target.value)} placeholder="25" />
+              </div>
+              <div>
+                <label className={labelCls}>Funding Stage</label>
+                <select className={inputCls} value={form.funding_stage} onChange={e => set("funding_stage", e.target.value)}>
+                  <option value="">Select...</option>
+                  {["pre-seed","seed","Series A","Series B","growth","public"].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Deployment</label>
+                <select className={inputCls} value={form.deployment_method} onChange={e => set("deployment_method", e.target.value)}>
+                  {["SaaS","On-premise","Hybrid"].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className={labelCls}>Description</label>
+                <textarea className={inputCls} rows={3} value={form.description} onChange={e => set("description", e.target.value)} placeholder="What does this vendor do and how will Carlsberg use them?" />
+              </div>
+            </div>
           )}
 
           {step === 2 && (
@@ -204,6 +243,88 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
 
           {step === 3 && (
             <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Upload supporting documents — MSA drafts, security whitepapers, financial statements.
+                The LLM scorer will analyse these to enrich the assessment.
+                <span className="text-gray-400"> (Optional — you can also upload later from the vendor detail page)</span>
+              </p>
+
+              {/* Upload controls */}
+              <div className="flex gap-2">
+                <select
+                  className={`flex-1 ${inputCls}`}
+                  value={pendingDocType}
+                  onChange={e => setPendingDocType(e.target.value)}
+                >
+                  {DOC_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#1C1C2E] hover:bg-[#2d2d42] text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <Upload className="h-4 w-4" />
+                  Browse
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.txt,.docx,.doc,.png,.jpg"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </div>
+
+              {/* Drop zone */}
+              <div
+                className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-[#D4002A]/40 hover:bg-red-50/30 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => {
+                  e.preventDefault();
+                  const files = Array.from(e.dataTransfer.files);
+                  setDocs(prev => [...prev, ...files.map(f => ({ file: f, docType: pendingDocType }))]);
+                }}
+              >
+                <Upload className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Drop files here or click Browse</p>
+                <p className="text-xs text-gray-400 mt-1">PDF, TXT, DOCX, images supported</p>
+              </div>
+
+              {/* Queued files */}
+              {docs.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-gray-500">{docs.length} file{docs.length !== 1 ? "s" : ""} queued for upload</p>
+                  {docs.map((d, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <FileText className="h-4 w-4 text-[#D4002A] flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{d.file.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {DOC_TYPES.find(dt => dt.value === d.docType)?.label} ·{" "}
+                          {(d.file.size / 1024).toFixed(0)} KB
+                        </p>
+                      </div>
+                      <select
+                        className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none"
+                        value={d.docType}
+                        onChange={e => setDocs(prev => prev.map((doc, j) => j === i ? { ...doc, docType: e.target.value } : doc))}
+                      >
+                        {DOC_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
+                      </select>
+                      <button onClick={() => removeDoc(i)} className="text-gray-300 hover:text-red-500 transition-colors">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4">
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Company</span><span className="font-medium">{form.company_name}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Country</span><span>{form.country || "—"}</span></div>
@@ -213,9 +334,25 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
                 <div className="flex justify-between"><span className="text-gray-500">SOC 2</span><span>{form.soc2 ? "✅ Yes" : "❌ No"}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">GDPR DPA</span><span>{form.gdpr_dpa ? "✅ Yes" : "❌ No"}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Pending Litigation</span><span>{form.pending_litigation ? "⚠️ Yes" : "✅ No"}</span></div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Documents</span>
+                  <span>{docs.length > 0 ? `${docs.length} file${docs.length !== 1 ? "s" : ""} queued` : "None"}</span>
+                </div>
               </div>
+              {docs.length > 0 && (
+                <div className="space-y-1">
+                  {docs.map((d, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
+                      <FileText className="h-3 w-3 text-[#D4002A]" />
+                      <span className="truncate">{d.file.name}</span>
+                      <span className="text-gray-300">·</span>
+                      <span>{DOC_TYPES.find(dt => dt.value === d.docType)?.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                <strong>Next:</strong> After submission, the 8-dimension scoring engine will automatically run and generate a risk report. You'll be redirected to the vendor detail page.
+                <strong>Next:</strong> Vendor created → documents uploaded → 8-dimension LLM scoring runs automatically. You'll be redirected to the vendor detail page.
               </div>
             </div>
           )}
@@ -229,7 +366,7 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
           >
             {step > 1 ? "← Back" : "Cancel"}
           </button>
-          {step < 3 ? (
+          {step < STEPS.length ? (
             <button
               onClick={() => setStep(s => s + 1)}
               disabled={step === 1 && !form.company_name}
@@ -243,7 +380,9 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
               disabled={submitting}
               className="bg-[#D4002A] hover:bg-[#b0001f] disabled:opacity-60 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2"
             >
-              {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</> : <><Play className="h-4 w-4" /> Submit & Run Assessment</>}
+              {submitting
+                ? <><Loader2 className="h-4 w-4 animate-spin" />{uploadProgress || "Submitting..."}</>
+                : <><Play className="h-4 w-4" />Submit & Run Assessment</>}
             </button>
           )}
         </div>
