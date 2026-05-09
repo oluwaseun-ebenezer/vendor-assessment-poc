@@ -1,0 +1,22 @@
+Finalist Selection,
+We will only watch the whole demo video if you in the beginning of the demo clearly describe on two slides:
+1A. Who is the target user of your solution? 
+1B. What are you helping the target users to achieve? What goal are you helping them attain? 
+Why is it mission critical for the organization that the target users are more successful in attaining the target goal.,
+
+We will then select the teams with the most inspiring solution demos. And, since Cline is paying for this hackathon, your demo needs to showcase how you are using Cline in some way. 
+
+Finalist Scoring,
+A. Mission-criticality . How mission-critical is the the target goal? 
+B. Solution Opportunity. Which tech can be used in which way to help users be much more successful in attaining the target goal? 
+C. Solution Impact: How much more successful will users be in attaining the target goal when using your solution? 
+
+A', B', C': We convert the 1-10 scale with a fibonacci function, where 1-5 -> 0, 6 -> 1, 7 -> 2, 8 -> 3, 9 -> 5, 10 -> 8.
+
+Scoring formula: A' x (B' + C')/2
+
+For each team the jury members will be asked four questions (1 - 10)
+How well did the team articulate which process they are trying to help users succeed better with?,
+How business critical is this target process?,
+How much impact could a great tech solution have on how well users succeed with this process?,
+How much impact do you think the demo solution would have on how well users succeed with the target process?
