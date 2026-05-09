@@ -54,13 +54,15 @@ backend/reports/
 backend/uploads/
 
 # -----------------------------------------------------------------------------
-# Node / Frontend
+# Node / Frontend & MCP Server
 # -----------------------------------------------------------------------------
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/build/
 frontend/.vite/
 frontend/.eslintcache
+mcp-server/node_modules/
 
 # Yarn / npm
 frontend/yarn-error.log
