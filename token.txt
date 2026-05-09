@@ -1,0 +1,17 @@
+TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlYTYwYzVjNi1lNjQ2LTQ1YTUtODI5ZC02MjkxZWMzMWU2NDYiLCJyb2xlIjoiYWRtaW4iLCJlbWFpbCI6ImFkbWluQGNhcmxzYmVyZy5jb20iLCJleHAiOjE3NzgzMjcyNDYsInR5cGUiOiJhY2Nlc3MifQ.GC5ypUyhCeeTSkvxbrfsL5lEPKQ3skd71gt9mE8CzrA
+
+--- PDF Links ---
+
+OpenAI (AMBER 71.7/100):
+http://localhost:8000/api/reports/ba4983c4-3a2a-4d29-90c6-0d4406b768a0/pdf
+
+AmberTech Solutions (RED 40.48/100):
+http://localhost:8000/api/reports/26ad4f04-b145-4adf-be73-a158773a3510/pdf
+
+AcmeCorp AI (RED 32.5/100):
+http://localhost:8000/api/reports/d64d6bf9-3c77-4aa6-b72f-55e584845ef2/pdf
+
+--- Usage ---
+curl -H "Authorization: Bearer $TOKEN" <pdf_link> -o report.pdf
+
+--- Note: token expires in 15 minutes ---

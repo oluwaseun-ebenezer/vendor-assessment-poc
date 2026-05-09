@@ -163,6 +163,27 @@ export interface Report {
   generated_at: string;
 }
 
+// Project types
+export interface AIConfig {
+  model: string;
+  temperature: number;
+  max_tokens: number;
+  system_prompt: string;
+  dimension_weights: Record<string, number>;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  owner_id?: string;
+  status: "active" | "archived";
+  ai_config: AIConfig;
+  vendor_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Filter types
 export interface VendorFilters {
   search?: string;

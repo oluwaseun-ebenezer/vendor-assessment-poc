@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import engine, Base, AsyncSessionLocal
-from app.api import auth, vendors, assessments, reports, tasks, analytics, users, approve, upload_base64
+from app.api import auth, vendors, assessments, reports, tasks, analytics, users, approve, upload_base64, projects
 
 
 async def _seed_users():
@@ -61,6 +61,7 @@ app.include_router(analytics.router)
 app.include_router(users.router)
 app.include_router(approve.router)
 app.include_router(upload_base64.router)
+app.include_router(projects.router)
 
 
 @app.get("/health")

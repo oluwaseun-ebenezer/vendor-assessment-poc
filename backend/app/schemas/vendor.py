@@ -5,6 +5,7 @@ from datetime import datetime
 
 class VendorCreate(BaseModel):
     company_name: str
+    project_id: Optional[str] = None
     website: Optional[str] = None
     country: Optional[str] = None
     founded_year: Optional[int] = None
@@ -106,6 +107,7 @@ class VendorListResponse(BaseModel):
     status: str
     risk_flag: Optional[str] = None
     composite_score: Optional[float] = None
+    project_id: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

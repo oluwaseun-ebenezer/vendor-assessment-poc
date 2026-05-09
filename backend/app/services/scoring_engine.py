@@ -59,6 +59,19 @@ async def run_assessment_task(assessment_id: str, vendor_id: str):
             vendor_dict = {c.name: getattr(vendor, c.name)
                            for c in vendor.__table__.columns}
 
+            # Load project AI config if vendor belongs to a project
+            ai_config = {}
+            if vendor.project_id:
+                from app.models.project import Project
+                p_result = await db.execute(select(Project).where(Project.id == vendor.project_id))
+                project = p_result.scalar_one_or_none()
+                if project and project.ai_config:
+                    ai_config = project.ai_config
+                    logger.info(
+                        f"Assessment {assessment_id} using project '{project.name}' "
+                        f"AI config: model={ai_config.get('model')}"
+                    )
+
             # Extract document text
             documents = []
             for doc in vendor.documents:
@@ -71,7 +84,17 @@ async def run_assessment_task(assessment_id: str, vendor_id: str):
 
             scorer_input = ScorerInput(
                 vendor=vendor_dict, documents=documents, enrichment=enrichment)
-            llm = LLMAnalyser()
+
+            # LLM analyser picks up per-project model and settings
+            llm = LLMAnalyser(
+                model=ai_config.get("model"),
+                temperature=ai_config.get("temperature"),
+                max_tokens=ai_config.get("max_tokens"),
+                system_prompt=ai_config.get("system_prompt", ""),
+            )
+
+            # Use per-project dimension weights if set
+            dimension_weights = ai_config.get("dimension_weights", {})
 
             # Run all 8 scorers concurrently
             tasks = [scorer.score(scorer_input, llm) for scorer in ALL_SCORERS]
@@ -98,11 +121,20 @@ async def run_assessment_task(assessment_id: str, vendor_id: str):
                 db.add(ds)
                 dimension_scores.append(res)
 
-            # Compute overall composite score
-            valid_scores = [
-                r.composite_score for r in dimension_scores if not isinstance(r, Exception)]
-            composite = sum(valid_scores) / \
-                len(valid_scores) if valid_scores else 0.0
+            # Compute overall composite score (weighted if project config set)
+            if dimension_weights and dimension_scores:
+                total_weight = 0.0
+                weighted_sum = 0.0
+                for r in dimension_scores:
+                    if isinstance(r, Exception):
+                        continue
+                    w = dimension_weights.get(r.dimension, 1.0 / len(ALL_SCORERS))
+                    weighted_sum += r.composite_score * w
+                    total_weight += w
+                composite = weighted_sum / total_weight if total_weight > 0 else 0.0
+            else:
+                valid_scores = [r.composite_score for r in dimension_scores if not isinstance(r, Exception)]
+                composite = sum(valid_scores) / len(valid_scores) if valid_scores else 0.0
 
             # Overall risk flag
             flags = [

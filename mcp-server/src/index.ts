@@ -23,6 +23,7 @@ import { apiCall } from "./client.js";
 
 const SubmitVendorSchema = z.object({
   company_name: z.string().describe("Legal company name"),
+  project_id: z.string().optional().describe("Project UUID to assign this vendor to"),
   website: z.string().optional().describe("Company website URL"),
   country: z.string().optional().describe("Country of incorporation"),
   founded_year: z.number().optional(),
@@ -121,6 +122,38 @@ const ApproveVendorSchema = z.object({
 const GetAnalyticsSchema = z.object({
   from_date: z.string().optional().describe("ISO date filter start"),
   to_date: z.string().optional().describe("ISO date filter end"),
+});
+
+const CreateProjectSchema = z.object({
+  name: z.string().describe("Project name e.g. 'FMCG Supply Chain AI 2026'"),
+  description: z.string().optional().describe("Project purpose and scope"),
+  ai_config: z.object({
+    model: z.string().optional().describe("OpenRouter model ID e.g. 'google/gemma-4-31b-it:free'"),
+    temperature: z.number().optional().describe("LLM temperature 0.0-1.0"),
+    max_tokens: z.number().optional().describe("Max tokens per LLM call"),
+    system_prompt: z.string().optional().describe("Custom system prompt appended to scorer prompts"),
+    dimension_weights: z.record(z.number()).optional().describe(
+      "Per-dimension weights (must sum to 1.0). Keys: security, viability, integration, legal, commercial, operations, scalability, maturity"
+    ),
+  }).optional().describe("Per-project AI model configuration"),
+});
+
+const UpdateProjectSchema = z.object({
+  project_id: z.string().describe("Project UUID"),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  status: z.enum(["active", "archived"]).optional(),
+  ai_config: z.object({
+    model: z.string().optional(),
+    temperature: z.number().optional(),
+    max_tokens: z.number().optional(),
+    system_prompt: z.string().optional(),
+    dimension_weights: z.record(z.number()).optional(),
+  }).optional(),
+});
+
+const ProjectIdSchema = z.object({
+  project_id: z.string().describe("Project UUID"),
 });
 
 // ─── Server factory — registers all handlers on a fresh Server instance ───────
@@ -315,6 +348,49 @@ srv.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: "create_project",
+      description: "Create a new project to group vendors. Each project has its own AI model config, dimension weights, and system prompt.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Project name e.g. 'FMCG Supply Chain AI 2026'" },
+          description: { type: "string" },
+          ai_config: {
+            type: "object",
+            description: "Per-project AI configuration",
+            properties: {
+              model: { type: "string", description: "OpenRouter model ID" },
+              temperature: { type: "number" },
+              max_tokens: { type: "number" },
+              system_prompt: { type: "string", description: "Custom context appended to all scorer prompts" },
+              dimension_weights: { type: "object", description: "Weights per dimension (must sum to 1.0)" },
+            },
+          },
+        },
+        required: ["name"],
+      },
+    },
+    {
+      name: "list_projects",
+      description: "List all active projects with vendor counts and AI config.",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "update_project",
+      description: "Update a project's name, description, status, or AI model config.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          project_id: { type: "string" },
+          name: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["active", "archived"] },
+          ai_config: { type: "object" },
+        },
+        required: ["project_id"],
+      },
+    },
   ],
 }));
 
@@ -332,7 +408,9 @@ srv.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (error) return toolError(`Failed to create vendor: ${error}`);
         const v = data as Record<string, unknown>;
         return toolSuccess(
-          `✅ Vendor created successfully!\n- ID: ${v.id}\n- Name: ${v.company_name}\n- Status: ${v.status}\n\nNext: call run_assessment with vendor_id="${v.id}"`,
+          `✅ Vendor created successfully!\n- ID: ${v.id}\n- Name: ${v.company_name}\n- Status: ${v.status}` +
+          (v.project_id ? `\n- Project: ${v.project_id}` : "") +
+          `\n\nNext: call run_assessment with vendor_id="${v.id}"`,
         );
       }
 
@@ -551,6 +629,51 @@ srv.setRequestHandler(CallToolRequestSchema, async (request) => {
             `  🟢 Green: ${s.green_count}  🟡 Amber: ${s.amber_count}  🔴 Red: ${s.red_count}\n\n` +
             `- Avg Composite Score: ${s.avg_composite_score ? Number(s.avg_composite_score).toFixed(1) : "—"}/100\n` +
             `- Avg Time to Assess: ${s.avg_time_to_assess_minutes ? Number(s.avg_time_to_assess_minutes).toFixed(1) + " min" : "—"}`,
+        );
+      }
+
+      // ── create_project ────────────────────────────────────────────────────
+      case "create_project": {
+        const input = CreateProjectSchema.parse(args);
+        const { data, error } = await apiCall("post", "/api/projects", input);
+        if (error) return toolError(`Failed to create project: ${error}`);
+        const p = data as Record<string, unknown>;
+        const cfg = p.ai_config as Record<string, unknown> ?? {};
+        return toolSuccess(
+          `✅ Project created!\n- ID: ${p.id}\n- Name: ${p.name}\n` +
+          `- AI Model: ${cfg.model ?? "default"}\n- Temperature: ${cfg.temperature ?? 0.2}\n\n` +
+          `Now submit vendors to this project using submit_vendor with project_id="${p.id}"`
+        );
+      }
+
+      // ── list_projects ─────────────────────────────────────────────────────
+      case "list_projects": {
+        const { data, error } = await apiCall("get", "/api/projects");
+        if (error) return toolError(`Failed to list projects: ${error}`);
+        const projects = data as Array<Record<string, unknown>>;
+        if (!projects.length) return toolSuccess("No projects found. Create one with create_project.");
+        let result = `${projects.length} project(s):\n\n`;
+        for (const p of projects) {
+          const cfg = p.ai_config as Record<string, unknown> ?? {};
+          const status = p.status === "active" ? "🟢" : "📦";
+          result += `${status} **${p.name}** (${p.vendor_count ?? 0} vendors)\n`;
+          result += `   ID: ${p.id}  Model: ${cfg.model ?? "default"}\n`;
+          if (p.description) result += `   ${p.description}\n`;
+          result += "\n";
+        }
+        return toolSuccess(result);
+      }
+
+      // ── update_project ────────────────────────────────────────────────────
+      case "update_project": {
+        const input = UpdateProjectSchema.parse(args);
+        const { project_id, ...body } = input;
+        const { data, error } = await apiCall("patch", `/api/projects/${project_id}`, body);
+        if (error) return toolError(`Failed to update project: ${error}`);
+        const p = data as Record<string, unknown>;
+        const cfg = p.ai_config as Record<string, unknown> ?? {};
+        return toolSuccess(
+          `✅ Project updated!\n- Name: ${p.name}\n- Model: ${cfg.model ?? "default"}\n- Status: ${p.status}`
         );
       }
 

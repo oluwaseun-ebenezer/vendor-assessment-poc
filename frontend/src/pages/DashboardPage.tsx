@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVendors, useCreateVendor, useUploadDocument, lookupVendor } from "@/api/vendors";
 import { useRunAssessment } from "@/api/assessments";
+import { useProject } from "@/hooks/useProject";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { RiskFlagBadge } from "@/components/shared/RiskFlagBadge";
@@ -72,6 +73,7 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
   const uploadDocument = useUploadDocument();
   const runAssessment = useRunAssessment();
   const navigate = useNavigate();
+  const { currentProject } = useProject();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(1);
@@ -142,6 +144,7 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
     try {
       const vendor = await createVendor.mutateAsync({
         ...form,
+        project_id: currentProject?.id || undefined,
         founded_year: form.founded_year ? parseInt(form.founded_year) : undefined,
         employee_count: form.employee_count ? parseInt(form.employee_count) : undefined,
       });
@@ -172,7 +175,12 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Submit New Vendor</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Step {step} of {STEPS.length}</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Step {step} of {STEPS.length}
+              {currentProject && (
+                <span className="ml-2 text-[#D4002A] font-medium">→ {currentProject.name}</span>
+              )}
+            </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-light">✕</button>
         </div>
@@ -495,9 +503,13 @@ function SubmitVendorModal({ onClose }: { onClose: () => void }) {
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { currentProject } = useProject();
   const [filters, setFilters] = useState<VendorFilters>({ page: 1, size: 20 });
   const [showModal, setShowModal] = useState(false);
-  const { data: vendors, isLoading } = useVendors(filters);
+  const { data: allVendors, isLoading } = useVendors(filters);
+  const vendors = currentProject
+    ? allVendors?.filter(v => v.project_id === currentProject.id)
+    : allVendors;
 
   const total = vendors?.length || 0;
   const cleared = vendors?.filter(v => v.status === "cleared").length || 0;

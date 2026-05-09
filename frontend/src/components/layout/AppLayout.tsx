@@ -1,17 +1,12 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useProject } from "@/hooks/useProject";
+import { useProjects } from "@/api/projects";
 import { useTasks } from "@/api/tasks";
 import {
-  LayoutDashboard,
-  BarChart3,
-  CheckSquare,
-  Users,
-  Bell,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Building2,
+  Bell, LogOut, LayoutDashboard, BarChart3, CheckSquare,
+  Users, FolderKanban, ChevronDown, ChevronUp, Building2,
 } from "lucide-react";
 
 interface AppLayoutProps {
@@ -20,14 +15,18 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { user, logout } = useAuth();
+  const { currentProject, setCurrentProject } = useProject();
+  const { data: projects } = useProjects();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const { data: tasks } = useTasks({ status: "open" });
   const openTasksCount = tasks?.length || 0;
 
   const navItems = [
     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { path: "/projects", label: "Projects", icon: FolderKanban },
     { path: "/metrics", label: "Metrics", icon: BarChart3 },
     { path: "/tasks", label: "Tasks", icon: CheckSquare, badge: openTasksCount },
     ...(user?.role === "admin"
@@ -83,8 +82,51 @@ export function AppLayout({ children }: AppLayoutProps) {
           </button>
         </div>
 
+        {/* Project switcher */}
+        {!collapsed && (
+          <div className="px-3 pb-2">
+            <button
+              onClick={() => setProjectMenuOpen(o => !o)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-left"
+            >
+              <FolderKanban className="h-3.5 w-3.5 text-[#D4002A] flex-shrink-0" />
+              <span className="flex-1 text-xs text-white/80 truncate">
+                {currentProject ? currentProject.name : "All Projects"}
+              </span>
+              {projectMenuOpen ? <ChevronUp className="h-3 w-3 text-white/40" /> : <ChevronDown className="h-3 w-3 text-white/40" />}
+            </button>
+            {projectMenuOpen && (
+              <div className="mt-1 bg-[#2a2a40] rounded-lg overflow-hidden border border-white/10">
+                <button
+                  onClick={() => { setCurrentProject(null); setProjectMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-white/10 transition-colors flex items-center gap-2 ${!currentProject ? "text-white font-medium" : "text-white/60"}`}
+                >
+                  <Building2 className="h-3 w-3" />All Projects
+                </button>
+                {(projects || []).filter(p => p.status === "active").map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setCurrentProject(p); setProjectMenuOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-white/10 transition-colors flex items-center gap-2 ${currentProject?.id === p.id ? "text-white font-medium bg-white/5" : "text-white/60"}`}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#D4002A] flex-shrink-0" />
+                    <span className="truncate">{p.name}</span>
+                    <span className="ml-auto text-white/30">{p.vendor_count}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => { navigate("/projects"); setProjectMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-xs text-[#D4002A] hover:bg-white/10 border-t border-white/10"
+                >
+                  + Manage Projects
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Nav */}
-        <nav className="flex-1 py-4 space-y-1 px-2">
+        <nav className="flex-1 py-2 space-y-1 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname.startsWith(item.path);
@@ -152,10 +194,16 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
         <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
-          <div>
+          <div className="flex items-center gap-3">
             <h2 className="text-sm text-gray-500 font-medium">
               {navItems.find((n) => location.pathname.startsWith(n.path))?.label || ""}
             </h2>
+            {currentProject && (
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 border border-red-100 rounded-full text-xs text-[#D4002A] font-medium">
+                <FolderKanban className="h-3 w-3" />
+                {currentProject.name}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button

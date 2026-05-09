@@ -5,28 +5,39 @@ from app.core.config import settings
 
 
 class LLMAnalyser:
-    def __init__(self):
+    def __init__(
+        self,
+        model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        system_prompt: str = "",
+    ):
         self.client = httpx.AsyncClient(timeout=60)
+        self.model = model or settings.openrouter_model
+        self.temperature = temperature if temperature is not None else 0.2
+        self.max_tokens = max_tokens or 800
+        self.system_prompt = system_prompt
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def analyse(self, prompt: str) -> tuple[float, str]:
         if not settings.openrouter_api_key:
             return 50.0, "LLM analysis skipped: no API key configured"
 
+        base_system = (
+            "You are an enterprise vendor risk analyst. "
+            "Always respond with valid JSON only: "
+            '{"score": <integer 0-100>, "reasoning": "<explanation>"}'
+        )
+        system_content = f"{self.system_prompt}\n\n{base_system}".strip() if self.system_prompt else base_system
+
         payload = {
-            "model": settings.openrouter_model,
+            "model": self.model,
             "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an enterprise vendor risk analyst. "
-                        "Always respond with valid JSON only: "
-                        '{"score": <integer 0-100>, "reasoning": "<explanation>"}'
-                    ),
-                },
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt},
             ],
             "response_format": {"type": "json_object"},
+            "temperature": self.temperature,
         }
 
         response = await self.client.post(

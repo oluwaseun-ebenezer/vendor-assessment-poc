@@ -81,6 +81,11 @@ class Vendor(Base):
     operating_countries: Mapped[int | None] = mapped_column(
         Integer, nullable=True)
 
+    # Project
+    project_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     # Status
     submitted_by: Mapped[str | None] = mapped_column(
         String, ForeignKey("users.id"), nullable=True
@@ -101,6 +106,9 @@ class Vendor(Base):
     )
     assessments: Mapped[list["Assessment"]] = relationship(  # noqa: F821
         "Assessment", back_populates="vendor"
+    )
+    project: Mapped["Project"] = relationship(  # noqa: F821
+        "Project", back_populates="vendors", foreign_keys=[project_id]
     )
 
 
