@@ -6,7 +6,7 @@ import { useProjects } from "@/api/projects";
 import { useTasks } from "@/api/tasks";
 import {
   Bell, LogOut, LayoutDashboard, BarChart3, CheckSquare,
-  Users, FolderKanban, ChevronDown, ChevronUp, Building2,
+  Users, FolderKanban, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Building2,
 } from "lucide-react";
 
 interface AppLayoutProps {

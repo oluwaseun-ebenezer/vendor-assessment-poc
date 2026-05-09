@@ -103,16 +103,17 @@ describe("DashboardPage", () => {
     expect(continueBtn).toBeDisabled();
   });
 
-  it("submit modal: advances to step 2 with company name", async () => {
+  it("submit modal: advances to step 2 after lookup", async () => {
     const user = userEvent.setup();
     renderWithProviders(<DashboardPage />, { initialEntries: ["/dashboard"], path: "/dashboard" });
 
     await user.click(screen.getByRole("button", { name: /submit vendor/i }));
-    await user.type(screen.getByPlaceholderText("Acme AI Ltd"), "TestCorp");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.type(screen.getAllByPlaceholderText(/Acme AI Ltd/i)[1], "TestCorp");
+    await user.click(screen.getAllByRole("button", { name: /continue/i })[0]);
 
-    expect(screen.getByText("Step 2 of 3")).toBeInTheDocument();
-    expect(screen.getByText("Security & Compliance")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Step 2 of 3/)).toBeInTheDocument();
+    });
   });
 
   it("shows empty state when no vendors", async () => {

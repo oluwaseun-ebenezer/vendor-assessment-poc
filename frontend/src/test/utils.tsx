@@ -3,6 +3,7 @@ import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ProjectProvider } from "@/hooks/useProject";
 
 export function createTestQueryClient() {
   return new QueryClient({
@@ -34,12 +35,14 @@ export function renderWithProviders(
     return (
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={initialEntries}>
-          <AuthProvider>
-            <Routes>
-              <Route path={path} element={children} />
-            </Routes>
-          </AuthProvider>
-        </MemoryRouter>
+            <AuthProvider>
+              <ProjectProvider>
+                <Routes>
+                  <Route path={path} element={children} />
+                </Routes>
+              </ProjectProvider>
+            </AuthProvider>
+          </MemoryRouter>
       </QueryClientProvider>
     );
   }

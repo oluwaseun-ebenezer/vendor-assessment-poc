@@ -158,4 +158,10 @@ export const handlers = [
   http.post("/api/vendors/:vendorId/approve", () =>
     HttpResponse.json({ status: "cleared" })
   ),
+
+  http.get("/api/projects", () => HttpResponse.json([])),
+
+  http.post("/api/vendors/lookup", () =>
+    HttpResponse.json({ company_name: "Test Corp", confidence: "medium" })
+  ),
 ];
