@@ -117,6 +117,28 @@ async def generate_report(assessment_id: str, vendor_id: str, db: AsyncSession) 
     from app.services.task_service import create_tasks_from_assessment
     await create_tasks_from_assessment(assessment_id, vendor_id, assessment.dimension_scores, vendor.company_name, db)
 
+    # Send email notification
+    try:
+        from app.services.email_service import send_assessment_complete
+        await send_assessment_complete(
+            vendor_name=vendor.company_name,
+            vendor_id=vendor_id,
+            composite_score=float(assessment.composite_score or 0),
+            risk_flag=assessment.risk_flag or "unknown",
+            dimension_scores=[
+                {
+                    "dimension": ds.dimension,
+                    "label": DIMENSION_LABELS.get(ds.dimension, ds.dimension),
+                    "composite_score": float(ds.composite_score or 0),
+                    "risk_flag": ds.risk_flag,
+                }
+                for ds in assessment.dimension_scores
+            ],
+            tasks=report_json.get("action_items", []),
+        )
+    except Exception as e:
+        logger.warning(f"Email notification failed: {e}")
+
     return report
 
 
