@@ -1,11 +1,7 @@
 FROM python:3.11-slim
 
-# System dependencies for WeasyPrint and PDF generation
 RUN apt-get update && apt-get install -y \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libcairo2 \
-    libgdk-pixbuf-xlib-2.0-0 \
+    gcc \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 

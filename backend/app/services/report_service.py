@@ -143,32 +143,138 @@ async def generate_report(assessment_id: str, vendor_id: str, db: AsyncSession) 
 
 
 async def _generate_pdf(report_json: dict, vendor_id: str) -> str:
-    from jinja2 import Template
-    from weasyprint import HTML
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.enums import TA_LEFT, TA_CENTER
 
     os.makedirs("/app/uploads/reports", exist_ok=True)
     pdf_path = f"/app/uploads/reports/report_{vendor_id}.pdf"
 
-    dims_html = ""
+    flag = report_json.get("overall_risk_flag", "unknown")
+    FLAG_COLORS = {
+        "green": colors.HexColor("#22c55e"),
+        "amber": colors.HexColor("#f59e0b"),
+        "red":   colors.HexColor("#ef4444"),
+    }
+    CARLSBERG_RED = colors.HexColor("#D4002A")
+    flag_color = FLAG_COLORS.get(flag, colors.grey)
+
+    doc = SimpleDocTemplate(pdf_path, pagesize=A4,
+                            leftMargin=20*mm, rightMargin=20*mm,
+                            topMargin=20*mm, bottomMargin=20*mm)
+    styles = getSampleStyleSheet()
+    story = []
+
+    # Title
+    story.append(Paragraph(
+        '<font color="#D4002A"><b>Vendor Risk Assessment Report</b></font>',
+        ParagraphStyle("title", fontSize=20, spaceAfter=2)
+    ))
+    story.append(Paragraph(
+        "Carlsberg Group — Confidential",
+        ParagraphStyle("sub", fontSize=9, textColor=colors.grey, spaceAfter=10)
+    ))
+    story.append(HRFlowable(width="100%", thickness=2, color=CARLSBERG_RED, spaceAfter=12))
+
+    # Vendor name + score
+    story.append(Paragraph(
+        f"<b>{report_json['vendor_name']}</b>",
+        ParagraphStyle("vname", fontSize=16, spaceAfter=6)
+    ))
+    score_data = [[
+        Paragraph(f'<font size="24"><b>{report_json["composite_score"]:.1f}/100</b></font>', styles["Normal"]),
+        Paragraph(f'<b>{flag.upper()} RISK</b>', ParagraphStyle("flag", fontSize=12, textColor=flag_color)),
+    ]]
+    score_table = Table(score_data, colWidths=[80*mm, 80*mm])
+    score_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8f9fa")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ("LINECOLOR", (0, 0), (-1, -1), flag_color),
+        ("LINEWIDTH", (0, 0), (0, -1), 4),
+        ("LINEBEFORE", (0, 0), (0, -1), 4, flag_color),
+    ]))
+    story.append(score_table)
+    story.append(Spacer(1, 10))
+    story.append(Paragraph(report_json.get("executive_summary", ""), styles["Normal"]))
+    story.append(Spacer(1, 14))
+
+    # Dimension scores table
+    story.append(Paragraph("<b>Dimension Scores</b>",
+                           ParagraphStyle("h2", fontSize=13, textColor=CARLSBERG_RED, spaceAfter=6)))
+    dim_header = [
+        Paragraph("<b>Dimension</b>", styles["Normal"]),
+        Paragraph("<b>Score</b>", styles["Normal"]),
+        Paragraph("<b>Flag</b>", styles["Normal"]),
+        Paragraph("<b>Key Findings</b>", styles["Normal"]),
+    ]
+    dim_rows = [dim_header]
     for d in report_json.get("dimensions", []):
-        color = {"green": "#22c55e", "amber": "#f59e0b",
-                 "red": "#ef4444"}.get(d["risk_flag"], "#888")
-        dims_html += f"""
-        <div style="margin-bottom:16px;padding:12px;border-left:4px solid {color};background:#f9f9f9">
-          <h3 style="margin:0;color:{color}">{d['label']} — {d['composite_score']:.0f}/100</h3>
-          <p style="margin:4px 0;font-size:12px">{d.get('llm_reasoning','')[:200]}</p>
-        </div>"""
+        dc = FLAG_COLORS.get(d.get("risk_flag", ""), colors.grey)
+        reasoning = (d.get("llm_reasoning") or "")[:200]
+        dim_rows.append([
+            Paragraph(d.get("label", d.get("dimension", "")), styles["Normal"]),
+            Paragraph(f'<font color="{dc.hexval()}"><b>{d.get("composite_score", 0):.0f}/100</b></font>', styles["Normal"]),
+            Paragraph(f'<font color="{dc.hexval()}">{d.get("risk_flag","").upper()}</font>', styles["Normal"]),
+            Paragraph(f'<font size="8">{reasoning}</font>', styles["Normal"]),
+        ])
+    dim_table = Table(dim_rows, colWidths=[50*mm, 22*mm, 18*mm, 75*mm])
+    dim_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f1f1")),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fafafa")]),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#eeeeee")),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(dim_table)
+    story.append(Spacer(1, 14))
 
-    html = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:40px">
-    <h1 style="color:#D4002A">Vendor Risk Assessment Report</h1>
-    <h2>{report_json['vendor_name']}</h2>
-    <p><strong>Overall Score:</strong> {report_json['composite_score']:.1f}/100 —
-       <span style="color:{'#22c55e' if report_json['overall_risk_flag']=='green' else '#f59e0b' if report_json['overall_risk_flag']=='amber' else '#ef4444'}">
-       {(report_json['overall_risk_flag'] or '').upper()}</span></p>
-    <p>{report_json['executive_summary']}</p>
-    <h2>Dimension Scores</h2>{dims_html}
-    <p style="font-size:10px;color:#888">Generated: {report_json['generated_at']}</p>
-    </body></html>"""
+    # Action items
+    tasks = report_json.get("action_items", [])
+    if tasks:
+        story.append(Paragraph("<b>Action Items</b>",
+                               ParagraphStyle("h2", fontSize=13, textColor=CARLSBERG_RED, spaceAfter=6)))
+        task_header = [
+            Paragraph("<b>Task</b>", styles["Normal"]),
+            Paragraph("<b>Department</b>", styles["Normal"]),
+            Paragraph("<b>Priority</b>", styles["Normal"]),
+        ]
+        task_rows = [task_header]
+        for t in tasks:
+            pc = {"high": colors.HexColor("#ef4444"),
+                  "medium": colors.HexColor("#f59e0b"),
+                  "low": colors.HexColor("#22c55e")}.get(t.get("priority", ""), colors.grey)
+            task_rows.append([
+                Paragraph(t.get("title", ""), styles["Normal"]),
+                Paragraph(t.get("department", ""), styles["Normal"]),
+                Paragraph(f'<font color="{pc.hexval()}"><b>{t.get("priority","").upper()}</b></font>', styles["Normal"]),
+            ])
+        task_table = Table(task_rows, colWidths=[100*mm, 40*mm, 25*mm])
+        task_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f1f1")),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fafafa")]),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#eeeeee")),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(task_table)
 
-    HTML(string=html).write_pdf(pdf_path)
+    # Footer
+    story.append(Spacer(1, 20))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey))
+    story.append(Paragraph(
+        f'Generated: {report_json.get("generated_at","")}  |  '
+        f'Vendor ID: {report_json.get("vendor_id","")}',
+        ParagraphStyle("footer", fontSize=7, textColor=colors.grey, spaceBefore=4)
+    ))
+
+    doc.build(story)
     return pdf_path
