@@ -17,6 +17,7 @@ export const useVendors = (filters?: VendorFilters) => {
       if (filters?.search) params.append("search", filters.search);
       if (filters?.status) params.append("status_filter", filters.status);
       if (filters?.risk_flag) params.append("risk_flag", filters.risk_flag);
+      if (filters?.project_id) params.append("project_id", filters.project_id);
       if (filters?.page) params.append("page", filters.page.toString());
       if (filters?.size) params.append("size", filters.size.toString());
 

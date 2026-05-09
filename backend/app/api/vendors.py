@@ -51,6 +51,7 @@ async def list_vendors(
     search: Optional[str] = None,
     status_filter: Optional[str] = None,
     risk_flag: Optional[str] = None,
+    project_id: Optional[str] = None,
     page: int = 1,
     size: int = 20,
     current_user_id: str = Depends(get_current_user_id),
@@ -66,6 +67,8 @@ async def list_vendors(
         )
     if status_filter:
         query = query.where(Vendor.status == status_filter)
+    if project_id:
+        query = query.where(Vendor.project_id == project_id)
 
     query = query.offset(
         (page - 1) * size).limit(size).order_by(Vendor.created_at.desc())
@@ -91,6 +94,7 @@ async def list_vendors(
             risk_flag=latest.risk_flag if latest else None,
             composite_score=float(
                 latest.composite_score) if latest and latest.composite_score else None,
+            project_id=v.project_id,
             created_at=v.created_at,
         )
         if risk_flag and item.risk_flag != risk_flag:

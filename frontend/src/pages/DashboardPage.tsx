@@ -506,10 +506,10 @@ export function DashboardPage() {
   const { currentProject } = useProject();
   const [filters, setFilters] = useState<VendorFilters>({ page: 1, size: 20 });
   const [showModal, setShowModal] = useState(false);
-  const { data: allVendors, isLoading } = useVendors(filters);
-  const vendors = currentProject
-    ? allVendors?.filter(v => v.project_id === currentProject.id)
-    : allVendors;
+  const { data: vendors, isLoading } = useVendors({
+    ...filters,
+    project_id: currentProject?.id,
+  });
 
   const total = vendors?.length || 0;
   const cleared = vendors?.filter(v => v.status === "cleared").length || 0;

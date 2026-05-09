@@ -189,6 +189,7 @@ export interface VendorFilters {
   search?: string;
   status?: VendorStatus;
   risk_flag?: RiskFlag;
+  project_id?: string;
   page?: number;
   size?: number;
 }
