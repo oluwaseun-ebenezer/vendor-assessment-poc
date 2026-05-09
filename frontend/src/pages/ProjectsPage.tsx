@@ -16,16 +16,31 @@ const DEFAULT_WEIGHTS = {
 };
 
 const AVAILABLE_MODELS = [
-  { id: "openai/gpt-oss-20b:free", label: "GPT OSS 20B · Free (recommended)" },
-  { id: "openai/gpt-oss-120b:free", label: "GPT OSS 120B · Free" },
-  { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 120B · Free" },
-  { id: "minimax/minimax-m2.5:free", label: "MiniMax M2.5 · Free" },
-  { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B · Free (may rate-limit)" },
-  { id: "openai/gpt-4o", label: "GPT-4o · Paid" },
-  { id: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5 · Paid" },
-  { id: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku · Paid (fast)" },
-  { id: "anthropic/claude-3-haiku", label: "Claude 3 Haiku · Paid" },
-  { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash · Paid" },
+  { group: "— Free —", id: "", label: "" },
+  { id: "openai/gpt-oss-20b:free",                 label: "GPT OSS 20B · Free (recommended)" },
+  { id: "openai/gpt-oss-120b:free",                label: "GPT OSS 120B · Free" },
+  { id: "nvidia/nemotron-3-super-120b-a12b:free",  label: "Nemotron 120B · Free" },
+  { id: "minimax/minimax-m2.5:free",               label: "MiniMax M2.5 · Free" },
+  { group: "— OpenAI —", id: "", label: "" },
+  { id: "openai/gpt-4o",                           label: "GPT-4o" },
+  { id: "openai/gpt-4o-mini",                      label: "GPT-4o Mini (fast)" },
+  { id: "openai/gpt-4-turbo",                      label: "GPT-4 Turbo" },
+  { group: "— Anthropic —", id: "", label: "" },
+  { id: "anthropic/claude-sonnet-4.5",             label: "Claude Sonnet 4.5" },
+  { id: "anthropic/claude-3.5-haiku",              label: "Claude 3.5 Haiku (fast)" },
+  { id: "anthropic/claude-3-haiku",                label: "Claude 3 Haiku" },
+  { id: "anthropic/claude-opus-4",                 label: "Claude Opus 4 (most capable)" },
+  { group: "— Google —", id: "", label: "" },
+  { id: "google/gemini-2.5-pro",                   label: "Gemini 2.5 Pro" },
+  { id: "google/gemini-2.5-flash",                 label: "Gemini 2.5 Flash (fast)" },
+  { id: "google/gemini-2.0-flash-001",             label: "Gemini 2.0 Flash" },
+  { group: "— Meta / Mistral / DeepSeek —", id: "", label: "" },
+  { id: "meta-llama/llama-3.3-70b-instruct",       label: "Llama 3.3 70B" },
+  { id: "meta-llama/llama-3.1-8b-instruct",        label: "Llama 3.1 8B (fast)" },
+  { id: "mistralai/mistral-medium-3",              label: "Mistral Medium 3" },
+  { id: "mistralai/mistral-small-3.2-24b-instruct",label: "Mistral Small 3.2" },
+  { id: "deepseek/deepseek-chat",                  label: "DeepSeek Chat" },
+  { id: "deepseek/deepseek-r1",                    label: "DeepSeek R1 (reasoning)" },
 ];
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -136,9 +151,13 @@ function ProjectModal({
                   value={form.model}
                   onChange={e => set("model", e.target.value)}
                 >
-                  {AVAILABLE_MODELS.map(m => (
-                    <option key={m.id} value={m.id} className="text-black bg-white">{m.label}</option>
-                  ))}
+                  {AVAILABLE_MODELS.map((m, i) =>
+                    m.group ? (
+                      <option key={i} disabled className="text-gray-400 bg-gray-100">{m.group}</option>
+                    ) : (
+                      <option key={m.id} value={m.id} className="text-black bg-white">{m.label}</option>
+                    )
+                  )}
                 </select>
               </div>
               <div>
