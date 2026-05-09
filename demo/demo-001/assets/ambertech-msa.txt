@@ -1,0 +1,270 @@
+MASTER SERVICES AGREEMENT — DRAFT v0.3
+AmberTech Solutions ApS / Carlsberg Group
+
+LAST UPDATED: 2026-05-01
+STATUS: DRAFT — NOT EXECUTED — PENDING LEGAL REVIEW
+
+================================================================================
+NOTICE: This is a preliminary draft provided for review purposes only.
+Several sections are marked [TBD] or [PENDING] and have not been agreed upon.
+================================================================================
+
+PARTIES
+
+Supplier:   AmberTech Solutions ApS
+            CVR: DK-39201847
+            Registered address: Vesterbrogade 149, 1620 Copenhagen V, Denmark
+            ("AmberTech" or "Supplier")
+
+Customer:   Carlsberg A/S and its Group affiliates
+            Ny Carlsberg Vej 100, 1799 Copenhagen V, Denmark
+            ("Carlsberg" or "Customer")
+
+--------------------------------------------------------------------------------
+1. DEFINITIONS
+--------------------------------------------------------------------------------
+
+1.1 "Services" means the AI-powered demand forecasting and inventory
+    optimisation platform described in Schedule A, delivered as a SaaS
+    solution hosted on AWS eu-west-1 (Ireland).
+
+1.2 "Personal Data" has the meaning given under GDPR (EU) 2016/679.
+
+1.3 "Confidential Information" means all non-public information disclosed by
+    either party in connection with this Agreement.
+
+1.4 "Deliverables" means all outputs, reports, models, and data produced by
+    the Services.
+
+1.5 "Intellectual Property Rights" or "IPR" means patents, trademarks,
+    copyright, database rights, trade secrets, and all other proprietary rights
+    whether registered or unregistered.
+
+--------------------------------------------------------------------------------
+2. SERVICES
+--------------------------------------------------------------------------------
+
+2.1 AmberTech shall provide the Services as described in Schedule A
+    (Statement of Work) commencing on the Effective Date.
+
+2.2 AmberTech shall use commercially reasonable efforts to meet the
+    performance benchmarks set out in Schedule B (SLA).
+
+2.3 SLA Uptime Target: 99.5% monthly uptime, excluding scheduled maintenance.
+    Maintenance windows: Sundays 02:00–06:00 CET with 48 hours notice.
+
+2.4 Support: Standard business hours support (09:00–17:00 CET, Mon–Fri).
+    No dedicated Customer Success Manager included at this tier.
+
+--------------------------------------------------------------------------------
+3. FEES AND PAYMENT
+--------------------------------------------------------------------------------
+
+3.1 Fees are usage-based as per Schedule C (Commercial Terms).
+    [TBD — Enterprise pricing schedule not yet agreed]
+
+3.2 Invoices shall be issued monthly in arrears.
+
+3.3 Payment terms: Net 30 days from invoice date.
+
+3.4 Carlsberg reserves the right to audit usage metrics against invoiced amounts
+    with 14 days notice, no more than once per calendar year.
+
+--------------------------------------------------------------------------------
+4. DATA PROTECTION
+--------------------------------------------------------------------------------
+
+4.1 The parties acknowledge that AmberTech will process Personal Data as a
+    Data Processor on behalf of Carlsberg as Data Controller.
+
+4.2 AmberTech represents that it has executed a Data Processing Agreement
+    (DPA) in compliance with GDPR Article 28. The executed DPA is attached
+    as Schedule D.
+
+4.3 All Personal Data shall be stored and processed exclusively within the
+    European Economic Area (EEA). AmberTech confirms data residency in
+    AWS eu-west-1 (Dublin, Ireland).
+
+4.4 AmberTech shall notify Carlsberg of any confirmed Personal Data breach
+    within 24 hours of becoming aware of such breach.
+
+4.5 Sub-processors: AmberTech currently uses the following sub-processors:
+    - Amazon Web Services EMEA SARL (infrastructure)
+    - [PENDING — full sub-processor list not yet provided]
+
+4.6 Data retention: Customer data shall be deleted within 30 days of contract
+    termination upon written request.
+
+--------------------------------------------------------------------------------
+5. INTELLECTUAL PROPERTY RIGHTS
+--------------------------------------------------------------------------------
+
+5.1 Pre-Existing IP: Each party retains ownership of IPR it owned prior to
+    the Effective Date. AmberTech retains ownership of its proprietary
+    forecasting models, algorithms, and platform technology.
+
+5.2 Deliverables Ownership: [TBD]
+    The parties have not yet agreed on ownership of Deliverables generated
+    by the Services using Carlsberg's data. This section is subject to
+    further negotiation.
+
+    [DRAFT OPTION A — Supplier retains ownership]
+    All Deliverables, including trained model outputs specific to Carlsberg's
+    data, remain the property of AmberTech Solutions. Carlsberg receives a
+    perpetual, non-exclusive licence to use such outputs.
+
+    [DRAFT OPTION B — Customer retains ownership]
+    All Deliverables generated using Carlsberg's data shall be the exclusive
+    property of Carlsberg upon payment of applicable fees. AmberTech retains
+    no rights to such Deliverables.
+
+    *** LEGAL NOTE: IP assignment clause not finalised. Option A vs Option B
+    must be resolved before execution. This is a material term. ***
+
+5.3 Licence Grant: AmberTech grants Carlsberg a non-exclusive,
+    non-transferable licence to access and use the Services during the term.
+
+5.4 Third-Party Components: [PENDING]
+    AmberTech has not provided a complete list of open-source and third-party
+    components used in the platform. This is required before execution.
+
+5.5 Background IP Indemnity: AmberTech represents that, to its knowledge,
+    the Services do not infringe any third-party IPR. However, AmberTech
+    has not provided formal IP clearance documentation or legal opinion.
+
+--------------------------------------------------------------------------------
+6. CONFIDENTIALITY
+--------------------------------------------------------------------------------
+
+6.1 Each party agrees to keep the other's Confidential Information strictly
+    confidential and not disclose it to any third party without prior
+    written consent.
+
+6.2 The obligation in 6.1 does not apply to information that:
+    (a) is or becomes publicly available through no fault of the receiving party;
+    (b) was known to the receiving party before disclosure;
+    (c) is required to be disclosed by law or regulation.
+
+6.3 Term: Confidentiality obligations survive termination for 3 years.
+
+--------------------------------------------------------------------------------
+7. WARRANTIES AND REPRESENTATIONS
+--------------------------------------------------------------------------------
+
+7.1 AmberTech warrants that:
+    (a) It has full authority to enter into this Agreement;
+    (b) The Services will perform materially in accordance with Schedule A;
+    (c) It will comply with all applicable laws including GDPR.
+
+7.2 AmberTech represents that as of the date of this Agreement:
+    (a) There is no pending or threatened litigation that would materially
+        affect its ability to deliver the Services;
+    (b) It maintains appropriate insurance coverage.
+        [PENDING — Insurance certificates not yet provided]
+
+7.3 Security Warranties:
+    (a) AmberTech has not suffered a material security breach in the
+        past 24 months;
+    (b) AmberTech does NOT currently hold ISO 27001 certification;
+    (c) AmberTech does NOT currently hold SOC 2 Type II certification;
+    (d) AmberTech has NOT conducted an independent penetration test
+        in the past 12 months.
+        [NOTE FROM AMBERTECH: ISO 27001 audit planned for Q3 2026]
+    (e) AmberTech maintains documented security policies covering
+        access control, encryption in transit (TLS 1.2+), and
+        encryption at rest (AES-256).
+
+7.4 THE WARRANTIES IN SECTION 7.1 ARE THE ONLY WARRANTIES GIVEN.
+    ALL OTHER WARRANTIES ARE EXCLUDED TO THE MAXIMUM EXTENT PERMITTED BY LAW.
+
+--------------------------------------------------------------------------------
+8. LIMITATION OF LIABILITY
+--------------------------------------------------------------------------------
+
+8.1 Neither party's total aggregate liability under or in connection with
+    this Agreement shall exceed the greater of:
+    (a) the total fees paid by Carlsberg in the 12 months preceding the claim; or
+    (b) EUR 250,000.
+
+8.2 Neither party shall be liable for any indirect, consequential, special,
+    or punitive damages.
+
+8.3 The limitations in 8.1 and 8.2 shall not apply to:
+    (a) death or personal injury caused by negligence;
+    (b) fraud or fraudulent misrepresentation;
+    (c) breach of confidentiality obligations;
+    (d) Data Protection breaches.
+
+--------------------------------------------------------------------------------
+9. TERM AND TERMINATION
+--------------------------------------------------------------------------------
+
+9.1 This Agreement commences on the Effective Date and continues for an
+    initial term of 12 months, renewable annually unless terminated.
+
+9.2 Either party may terminate for material breach on 30 days written notice
+    if the breach is not remedied within the notice period.
+
+9.3 Carlsberg may terminate for convenience on 60 days written notice.
+
+9.4 Upon termination, AmberTech shall provide a data export in a standard
+    machine-readable format within 30 days.
+
+--------------------------------------------------------------------------------
+10. GENERAL
+--------------------------------------------------------------------------------
+
+10.1 Governing Law: This Agreement is governed by the laws of Denmark.
+
+10.2 Disputes: The parties shall attempt to resolve disputes by negotiation
+     before referring to the Copenhagen courts.
+
+10.3 Entire Agreement: This Agreement (including all Schedules) constitutes
+     the entire agreement between the parties relating to its subject matter.
+
+10.4 Amendments: No amendment shall be valid unless in writing and signed
+     by authorised representatives of both parties.
+
+10.5 Assignment: Neither party may assign this Agreement without the other's
+     prior written consent, not to be unreasonably withheld.
+
+--------------------------------------------------------------------------------
+SCHEDULES
+--------------------------------------------------------------------------------
+
+SCHEDULE A — Statement of Work
+[ATTACHED — demand forecasting product specification v1.2]
+
+SCHEDULE B — SLA
+Uptime: 99.5% monthly
+Incident response: P1 < 1 hour, P2 < 4 hours, P3 < 2 business days
+
+SCHEDULE C — Commercial Terms
+[TBD — PENDING pricing negotiation]
+
+SCHEDULE D — Data Processing Agreement (GDPR Article 28)
+[ATTACHED — DPA v2.1, signed 2026-03-14]
+
+SCHEDULE E — Security Policy Summary
+[PENDING — AmberTech to provide by 2026-05-15]
+
+SCHEDULE F — Sub-processor List
+[PENDING — AmberTech to provide complete list]
+
+SCHEDULE G — Open Source Component Registry
+[PENDING — AmberTech to provide before execution]
+
+--------------------------------------------------------------------------------
+SIGNATURE BLOCK
+--------------------------------------------------------------------------------
+
+FOR AMBERTECH SOLUTIONS ApS:          FOR CARLSBERG A/S:
+
+Signature: _______________________    Signature: _______________________
+Name:      _______________________    Name:      _______________________
+Title:     _______________________    Title:     _______________________
+Date:      _______________________    Date:      _______________________
+
+================================================================================
+END OF DOCUMENT — DRAFT v0.3 — NOT EXECUTED
+================================================================================

@@ -1,0 +1,325 @@
+OPENAI ENTERPRISE SERVICES AGREEMENT — REVIEW COPY
+OpenAI OpCo, LLC / Carlsberg A/S
+Prepared for: Carlsberg Group Legal & Procurement Review
+Document Reference: CAR-OPENAI-2026-001
+Status: UNDER LEGAL REVIEW — NOT EXECUTED
+Last Updated: 2026-05-09
+
+================================================================================
+NOTICE: This document is a Carlsberg-annotated review copy of OpenAI's standard
+Business Terms and Data Processing Addendum (DPA), effective January 1, 2026.
+Legal annotations are marked [CARLSBERG LEGAL NOTE] throughout.
+================================================================================
+
+PARTIES
+
+Supplier:   OpenAI OpCo, LLC
+            1455 3rd Street
+            San Francisco, CA 94158, USA
+            Data Protection Officer: privacy@openai.com
+            ("OpenAI" or "Supplier")
+
+Customer:   Carlsberg A/S and its Group affiliates
+            Ny Carlsberg Vej 100, 1799 Copenhagen V, Denmark
+            ("Carlsberg" or "Customer")
+
+Services:   OpenAI API (GPT-4o, GPT-4 Turbo), ChatGPT Enterprise,
+            and associated developer tooling for internal AI applications
+            including demand forecasting model fine-tuning and
+            customer insights analytics.
+
+--------------------------------------------------------------------------------
+1. GOVERNING LAW AND JURISDICTION
+--------------------------------------------------------------------------------
+
+1.1 These Terms are governed by the laws of the State of California, USA,
+    excluding its conflicts-of-laws principles.
+
+1.2 All disputes shall be resolved exclusively in the federal or state courts
+    of San Francisco, California, USA.
+
+    [CARLSBERG LEGAL NOTE — HIGH RISK]: California governing law is
+    non-standard for a Danish company. Carlsberg's standard vendor agreements
+    use Danish law and Copenhagen jurisdiction. This creates:
+    (a) Significant litigation cost and access-to-justice risk for Carlsberg.
+    (b) Potential conflict with mandatory EU consumer/B2B protection rules.
+    (c) Enforceability risk under Danish contract law for certain clauses.
+    STATUS: Must escalate to Group General Counsel. Non-negotiable for OpenAI
+    per their standard terms. Consider risk acceptance with legal sign-off.
+
+1.3 Dispute Resolution: Mandatory binding arbitration through NAM (National
+    Arbitration and Mediation), San Francisco-based.
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: Class action waiver and mandatory
+    arbitration may limit Carlsberg's legal remedies in a dispute scenario.
+    Batch arbitration provisions apply if 25+ claimants file simultaneously.
+
+--------------------------------------------------------------------------------
+2. DATA PROCESSING AND GDPR COMPLIANCE
+--------------------------------------------------------------------------------
+
+2.1 OpenAI acts as Data Processor under GDPR Article 28 for Customer Data
+    submitted via the API and Enterprise services.
+
+2.2 OpenAI Ireland Ltd. is the contracting entity for EEA customers.
+    EEA and Swiss data is processed under SCCs (Standard Contractual Clauses)
+    per EU Commission Decision of June 4, 2021.
+
+    [CARLSBERG LEGAL NOTE — POSITIVE]: This is the correct GDPR structure.
+    OpenAI Ireland Ltd. as data processor with SCCs provides an adequate
+    legal transfer mechanism for Carlsberg's EU customer data.
+
+2.3 Sub-processors: OpenAI uses sub-processors listed at
+    https://platform.openai.com/subprocessors
+    Customer receives 30 days notice of changes and may object.
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: Sub-processor list includes
+    US-based cloud infrastructure (Microsoft Azure, AWS). While SCCs cover
+    the transfer mechanism, US data localisation risk remains under
+    US CLOUD Act — US government may compel access to data held by US companies
+    even on EU infrastructure. This requires DPIA (Data Protection Impact
+    Assessment) before go-live.
+    STATUS: DPIA required. IT Security and DPO sign-off needed.
+
+2.4 Data Retention: OpenAI will return or delete Customer Data following
+    expiry or termination of the Agreement at Customer's instruction.
+
+2.5 Training Opt-Out: Customers may opt out of model training on their
+    data via API configuration (zero data retention mode available for API).
+    ChatGPT Enterprise: training on Enterprise data is OFF by default.
+
+    [CARLSBERG LEGAL NOTE — POSITIVE]: Zero data retention (ZDR) mode
+    for API usage eliminates the model training concern. Must be contractually
+    confirmed and technically verified. Add to IT Security checklist.
+
+2.6 Personal Data Breach Notification: OpenAI will notify Customer
+    "without undue delay" after becoming aware of a Personal Data Breach.
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: "Without undue delay" is weaker
+    than Carlsberg's standard 24-hour breach notification requirement.
+    GDPR Article 33 requires notification to supervisory authority within
+    72 hours — OpenAI's obligation to notify Customer must precede this.
+    Recommend: negotiate a specific 24-hour SLA for breach notification.
+
+--------------------------------------------------------------------------------
+3. INTELLECTUAL PROPERTY RIGHTS
+--------------------------------------------------------------------------------
+
+3.1 Output Ownership: As between Customer and OpenAI, Customer owns the
+    Output generated by the Services (to the extent permitted by applicable law).
+    OpenAI assigns all rights, title, and interest in Output to Customer.
+
+    [CARLSBERG LEGAL NOTE — POSITIVE]: Output ownership is clearly assigned
+    to Carlsberg. This is significantly better than many AI vendors.
+    Fine-tuned model outputs using Carlsberg data are Customer-owned.
+
+3.2 Input Ownership: Customer retains ownership of all Input provided to
+    the Services.
+
+    [CARLSBERG LEGAL NOTE — POSITIVE]: No IP transfer of Carlsberg's
+    proprietary data, recipes, or business information submitted as Input.
+
+3.3 Similarity of Content: Due to the nature of AI, Output may not be unique.
+    Other users may receive similar Output. Assignment does not extend to
+    third-party Output.
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: Non-uniqueness of Output creates
+    risk for Carlsberg using AI-generated content in marketing, product
+    development, or competitive contexts. Must be communicated to business
+    units. Recommend: do not use AI Output without human review for
+    externally-published content.
+
+3.4 Model Training: If Customer opts out of model training (see 2.5),
+    Input will not be used to train OpenAI's foundation models.
+
+3.5 Prohibited Uses: Customer may not use Services to:
+    (a) Develop models that compete with OpenAI.
+    (b) Reverse-engineer OpenAI's models, algorithms, or systems.
+    (c) Automatically extract Output at scale without authorisation.
+
+    [CARLSBERG LEGAL NOTE — LOW RISK]: Standard restrictions. Carlsberg's
+    intended use case (demand forecasting, internal analytics) does not
+    conflict with these restrictions.
+
+--------------------------------------------------------------------------------
+4. SECURITY AND COMPLIANCE
+--------------------------------------------------------------------------------
+
+4.1 OpenAI maintains the following certifications and compliance frameworks:
+    - SOC 2 Type II (annual audit, report available under NDA)
+    - ISO 27001 (certified)
+    - GDPR compliant (as Data Processor)
+    - CCPA compliant
+    - CSA STAR Level 1
+
+    [CARLSBERG LEGAL NOTE — POSITIVE]: Strong security posture. SOC 2 Type II
+    and ISO 27001 are Carlsberg's minimum requirements for Tier 1 vendors.
+    Request SOC 2 report under NDA as part of due diligence.
+
+4.2 Penetration Testing: OpenAI conducts annual third-party penetration tests.
+    Summary results available on request under NDA.
+
+4.3 Encryption: All data encrypted in transit (TLS 1.2+) and at rest (AES-256).
+
+4.4 Access Controls: Multi-factor authentication enforced for all OpenAI
+    internal access to Customer Data systems.
+
+4.5 Uptime SLA: OpenAI API targets 99.9% monthly uptime.
+    ChatGPT Enterprise: 99.9% uptime SLA with credits for downtime.
+
+    [CARLSBERG LEGAL NOTE — POSITIVE]: 99.9% uptime with credits is
+    acceptable for non-critical internal tooling. Not recommended for
+    production-critical supply chain systems without fallback.
+
+4.6 Security Incident Response: OpenAI maintains a documented incident
+    response process. P1 incidents (service-wide): response within 1 hour.
+
+--------------------------------------------------------------------------------
+5. COMMERCIAL TERMS
+--------------------------------------------------------------------------------
+
+5.1 Pricing Model: Usage-based (per token) for API access.
+    ChatGPT Enterprise: Annual subscription, volume pricing available.
+
+5.2 Enterprise Pricing: Enterprise pricing available with volume commitment.
+    Dedicated account management included at Enterprise tier.
+
+5.3 Price Changes: OpenAI may change prices with minimum 30 days notice.
+    Subscriptions: price changes take effect at next renewal.
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: 30-day notice for price changes
+    is shorter than Carlsberg's preferred 90-day notice for material price
+    increases. Negotiate: request 90-day notice for increases >10%.
+
+5.4 Limitation of Liability: OpenAI's aggregate liability is capped at:
+    (a) Fees paid in the 12 months preceding the claim; OR
+    (b) USD 100 (for consumer use cases).
+
+    [CARLSBERG LEGAL NOTE — HIGH RISK]: The USD $100 cap applies to
+    non-enterprise consumer terms. For Enterprise agreements, the 12-month
+    fees cap applies — which is the relevant provision for Carlsberg.
+    However, at scale API usage, this cap may be insufficient for a
+    significant data breach or service failure affecting Carlsberg's
+    supply chain operations. Recommend: negotiate minimum liability cap
+    of EUR 5M or 24-month fees, whichever is greater.
+
+5.5 Warranty Disclaimer: Services provided "AS IS." No warranties of
+    merchantability, fitness for purpose, or accuracy of Output.
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: Standard AI vendor disclaimer.
+    Carlsberg must implement human-in-the-loop review for all
+    business-critical decisions based on AI Output. Document this
+    in internal AI governance policy.
+
+5.6 Dedicated CSM: Enterprise tier includes dedicated Customer Success Manager
+    and Technical Account Manager (TAM).
+
+5.7 SLA Credits: Service credits issued for downtime below SLA threshold.
+    Credits applied to next invoice (not cash refunds).
+
+--------------------------------------------------------------------------------
+6. TERMINATION AND EXIT
+--------------------------------------------------------------------------------
+
+6.1 Customer may terminate for convenience with 30 days written notice
+    (subscription: at renewal).
+
+6.2 Data Export: Following termination, Customer Data will be deleted within
+    30 days of termination, or returned in machine-readable format on request.
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: 30-day deletion window is acceptable
+    but must be confirmed technically. Carlsberg must ensure internal data
+    exports are completed before termination for any fine-tuned models or
+    stored embeddings. Exit plan required as part of vendor onboarding.
+
+6.3 OpenAI may terminate or suspend access for:
+    (a) Breach of Terms or Usage Policies
+    (b) Legal compliance
+    (c) Risk of harm to OpenAI, users, or third parties
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: Unilateral suspension right is
+    broad. For production-critical workloads, this creates business continuity
+    risk. Recommend: ensure no single-vendor dependency for critical AI
+    infrastructure.
+
+--------------------------------------------------------------------------------
+7. BUSINESS CONTINUITY AND VENDOR VIABILITY
+--------------------------------------------------------------------------------
+
+7.1 OpenAI is a Delaware-incorporated company with:
+    - Revenue: >$3.7B ARR (2024, public reporting)
+    - Funding: $6.6B raised (Series E, Oct 2024, lead: Thrive Capital)
+    - Valuation: ~$157B (Dec 2024)
+    - Employees: ~3,500+
+    - Key investors: Microsoft (49% economic interest), SoftBank, Sequoia
+
+    [CARLSBERG LEGAL NOTE — POSITIVE]: Strong financial position. Not a
+    viability risk in the traditional sense. Microsoft's deep integration
+    (Azure infrastructure, Copilot) provides additional continuity assurance.
+
+7.2 Concentration Risk: OpenAI controls ~60% of enterprise LLM market.
+    Key-person dependency: CEO Sam Altman (historical governance instability
+    in Nov 2023 noted — resolved, but board composition remains a risk factor).
+
+    [CARLSBERG LEGAL NOTE — MEDIUM RISK]: Market concentration and key-person
+    risk noted. Nov 2023 board crisis resolved but demonstrated governance
+    fragility. Multi-vendor AI strategy recommended (e.g. OpenAI + Anthropic
+    or Azure OpenAI as fallback).
+
+--------------------------------------------------------------------------------
+SCHEDULES
+--------------------------------------------------------------------------------
+
+SCHEDULE A — Permitted Use Cases (Carlsberg internal AI applications)
+- Demand forecasting model fine-tuning (API, GPT-4 Turbo)
+- Internal customer insights analytics (ChatGPT Enterprise)
+- Supply chain anomaly detection (API, embeddings)
+- NOT PERMITTED: Customer-facing chatbots without additional DPA review
+
+SCHEDULE B — Data Processing Addendum (GDPR Article 28)
+OpenAI Data Processing Addendum, effective January 1, 2026.
+EEA contracting party: OpenAI Ireland Ltd.
+SCCs: Module 2 (Controller-to-Processor) applicable.
+[ATTACHED — OpenAI standard DPA, effective Jan 1 2026]
+
+SCHEDULE C — Sub-Processor List
+Current sub-processors include (non-exhaustive):
+- Microsoft Azure (US, EU regions) — compute and storage infrastructure
+- Amazon Web Services (EU regions) — supplemental infrastructure
+[Full list: https://platform.openai.com/subprocessors]
+
+SCHEDULE D — Security Attestations
+- SOC 2 Type II report (available under NDA — request via account team)
+- ISO 27001 certificate (available on request)
+- Annual penetration test summary (available under NDA)
+
+SCHEDULE E — Commercial Terms
+[PENDING — Enterprise pricing to be confirmed by OpenAI account team]
+Estimated: $X per 1M tokens (GPT-4o), enterprise discount applicable at
+committed annual spend >$500K.
+
+SCHEDULE F — Carlsberg Internal Notes
+Risk Summary (Carlsberg Procurement):
+  HIGH:   Governing law (California, not Denmark)
+  HIGH:   Liability cap insufficient for enterprise data breach scenario
+  MEDIUM: Sub-processor US CLOUD Act exposure — DPIA required
+  MEDIUM: Breach notification SLA ("undue delay" vs 24hr)
+  MEDIUM: Price change notice period (30 days vs 90 days preferred)
+  MEDIUM: Unilateral suspension right — BCP required
+  LOW:    Output non-uniqueness — internal policy required
+  LOW:    Restricted uses (no OpenAI competition — not a concern)
+  POSITIVE: SOC 2 + ISO 27001 certified
+  POSITIVE: Output and Input ownership assigned to Carlsberg
+  POSITIVE: Zero data retention mode for API available
+  POSITIVE: 99.9% uptime SLA with credits
+  POSITIVE: Strong financial position, Microsoft backing
+
+Overall Assessment (Carlsberg Legal): AMBER — Approvable with conditions.
+Conditions: (1) Governing law risk-acceptance by Group GC, (2) DPIA completed,
+(3) Liability cap negotiation, (4) ZDR mode confirmed technically,
+(5) Multi-vendor fallback strategy approved by CTO.
+
+================================================================================
+END OF DOCUMENT — UNDER LEGAL REVIEW — NOT EXECUTED
+Carlsberg Reference: CAR-OPENAI-2026-001
+================================================================================
