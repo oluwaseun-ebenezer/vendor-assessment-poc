@@ -142,18 +142,15 @@ export type TaskStatus = "open" | "in_progress" | "done";
 // Analytics types
 export interface Analytics {
   total_vendors: number;
+  total_assessments: number;
   cleared_vendors: number;
   in_review_vendors: number;
   rejected_vendors: number;
   avg_composite_score: number;
-  risk_distribution: {
-    green: number;
-    amber: number;
-    red: number;
-  };
-  avg_time_to_assess_hours: number;
-  avg_time_to_onboard_days: number;
-  efficiency_gain_percentage: number;
+  green_count: number;
+  amber_count: number;
+  red_count: number;
+  avg_time_to_assess_minutes: number;
 }
 
 // Report types

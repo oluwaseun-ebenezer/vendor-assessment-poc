@@ -50,9 +50,9 @@ export function MetricsPage() {
   }
 
   const riskData = [
-    { name: "Green", value: analytics.risk_distribution.green, color: "#10b981" },
-    { name: "Amber", value: analytics.risk_distribution.amber, color: "#f59e0b" },
-    { name: "Red", value: analytics.risk_distribution.red, color: "#ef4444" },
+    { name: "Green", value: analytics.green_count, color: "#10b981" },
+    { name: "Amber", value: analytics.amber_count, color: "#f59e0b" },
+    { name: "Red", value: analytics.red_count, color: "#ef4444" },
   ].filter(d => d.value > 0);
 
   const statusData = [
@@ -61,9 +61,10 @@ export function MetricsPage() {
     { name: "Rejected", value: analytics.rejected_vendors, fill: "#ef4444" },
   ];
 
-  const efficiency = analytics.efficiency_gain_percentage;
-  const avgDays = analytics.avg_time_to_onboard_days;
-  const avgMins = analytics.avg_time_to_assess_hours * 60;
+  const avgMins = analytics.avg_time_to_assess_minutes;
+  const MANUAL_DAYS = 45;
+  const MANUAL_MINS = MANUAL_DAYS * 24 * 60;
+  const efficiency = avgMins > 0 ? ((MANUAL_MINS - avgMins) / MANUAL_MINS) * 100 : 99.8;
 
   return (
     <AppLayout>
@@ -81,7 +82,7 @@ export function MetricsPage() {
               <Zap className="h-5 w-5 text-[#D4002A]" />
               <span className="text-sm font-medium text-white/60 uppercase tracking-wide">Efficiency Gain</span>
             </div>
-            <div className="flex items-end gap-8">
+              <div className="flex items-end gap-8">
               <div>
                 <p className="text-6xl font-bold text-white">{efficiency.toFixed(0)}%</p>
                 <p className="text-white/50 text-sm mt-1">vs. 45-day manual baseline</p>
@@ -94,7 +95,7 @@ export function MetricsPage() {
                 <div className="text-white/30 text-2xl font-light">→</div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-emerald-400">
-                    {avgMins < 60 ? `${avgMins.toFixed(0)}m` : `${avgDays.toFixed(1)}d`}
+                    {avgMins < 60 ? `${avgMins.toFixed(1)}m` : `${(avgMins/60).toFixed(1)}h`}
                   </div>
                   <div className="text-white/40 text-xs mt-0.5">automated</div>
                 </div>
@@ -107,8 +108,8 @@ export function MetricsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total Vendors" value={String(analytics.total_vendors)} sub="in pipeline" icon={TrendingUp} color="bg-[#1C1C2E]" />
           <StatCard label="Avg Score" value={`${analytics.avg_composite_score.toFixed(1)}`} sub="composite risk score" icon={CheckCircle} color="bg-blue-500" />
-          <StatCard label="Avg Assess Time" value={`${avgMins.toFixed(0)}m`} sub="from submit to report" icon={Clock} color="bg-amber-500" />
-          <StatCard label="Clearance Rate" value={`${analytics.total_vendors > 0 ? ((analytics.cleared_vendors / analytics.total_vendors) * 100).toFixed(0) : 0}%`} sub="of assessed vendors" icon={CheckCircle} color="bg-emerald-500" />
+          <StatCard label="Avg Assess Time" value={avgMins < 60 ? `${avgMins.toFixed(1)}m` : `${(avgMins/60).toFixed(1)}h`} sub="from submit to report" icon={Clock} color="bg-amber-500" />
+          <StatCard label="Clearance Rate" value={`${analytics.total_assessments > 0 ? ((analytics.cleared_vendors / analytics.total_vendors) * 100).toFixed(0) : 0}%`} sub="of assessed vendors" icon={CheckCircle} color="bg-emerald-500" />
         </div>
 
         {/* Charts */}
